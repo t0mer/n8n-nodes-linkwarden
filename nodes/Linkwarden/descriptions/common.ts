@@ -154,3 +154,37 @@ export const linkSortField = (displayOptions: DisplayFilter): INodeProperties =>
 		{ name: 'Oldest First', value: 1 },
 	],
 });
+
+export const iconWeightField: INodeProperties = {
+	displayName: 'Icon Weight',
+	name: 'iconWeight',
+	type: 'options',
+	default: 'regular',
+	description: 'Style of the icon',
+	options: [
+		{ name: 'Bold', value: 'bold' },
+		{ name: 'Duotone', value: 'duotone' },
+		{ name: 'Fill', value: 'fill' },
+		{ name: 'Light', value: 'light' },
+		{ name: 'Regular', value: 'regular' },
+		{ name: 'Thin', value: 'thin' },
+	],
+};
+
+export const iconField: INodeProperties = {
+	displayName: 'Icon',
+	name: 'icon',
+	type: 'string',
+	default: '',
+	placeholder: 'e.g. bookmark',
+	description:
+		'Name of a Phosphor icon (https://phosphoricons.com), e.g. "bookmark" or "book-open"',
+};
+
+export const colorField: INodeProperties = {
+	displayName: 'Color',
+	name: 'color',
+	type: 'color',
+	default: '#0ea5e9',
+	description: 'Color as a hex code, e.g. #0ea5e9',
+};

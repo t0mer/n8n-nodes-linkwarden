@@ -1,0 +1,25 @@
+{
+	"id": 42,
+	"name": "Example Article",
+	"type": "url",
+	"description": "Saved for later",
+	"collectionId": 3,
+	"icon": null,
+	"iconWeight": null,
+	"color": null,
+	"url": "https://links.example.com/article",
+	"image": "archives/3/42.png",
+	"pdf": "archives/3/42.pdf",
+	"readable": "archives/3/42_readability.json",
+	"monolith": null,
+	"preview": "archives/preview/3/42.jpeg",
+	"lastPreserved": "2026-09-01T10:00:00.000Z",
+	"createdAt": "2026-09-01T09:59:00.000Z",
+	"updatedAt": "2026-09-01T10:00:00.000Z",
+	"tags": [
+		{ "id": 1, "name": "News", "ownerId": 1 },
+		{ "id": 2, "name": "dev", "ownerId": 1 }
+	],
+	"collection": { "id": 3, "name": "Read Later", "ownerId": 1, "color": "#0ea5e9" },
+	"pinnedBy": []
+}

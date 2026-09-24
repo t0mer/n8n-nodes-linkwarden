@@ -4,8 +4,9 @@ import { paginate } from '../../../shared/paginate';
 import { parseId, parseNameList, readLocator, resolveCollectionId } from '../../../shared/locators';
 import { FIND_BY_URL_MAX_PAGES } from '../../../shared/constants';
 import { sameUrl, urlSearchTerm } from '../../../shared/url';
+import { buildLinkUpdateBody, type LinkChanges, type TagMode } from '../../../shared/linkUpdate';
 import { linkwardenRequest, linkwardenRequestFull } from '../../../shared/transport';
-import type { Link } from '../../../shared/types';
+import type { Collection, Link } from '../../../shared/types';
 import {
 	hintOnHardLimit,
 	linkFilterQs,
@@ -158,10 +159,60 @@ const create: OperationHandler = async function (i) {
 	return toItems({ ...response.data, duplicate: false });
 };
 
+export async function putLink(
+	ctx: IExecuteFunctions,
+	linkId: number,
+	body: IDataObject,
+	itemIndex: number,
+): Promise<Link> {
+	return await linkwardenRequest<Link>(
+		ctx,
+		'PUT',
+		`/api/v1/links/${linkId}`,
+		requestOptions(ctx, itemIndex, { body, messages: { 404: `Link ${linkId} not found` } }),
+	);
+}
+
+const TEXT_FIELDS = ['name', 'url', 'description', 'color', 'icon', 'iconWeight'] as const;
+
+const update: OperationHandler = async function (i) {
+	const linkId = parseId(this, this.getNodeParameter('linkId', i), 'Link ID', i);
+	const fields = this.getNodeParameter('updateFields', i, {}) as IDataObject;
+
+	const changes: LinkChanges = {};
+	for (const field of TEXT_FIELDS) {
+		if (typeof fields[field] === 'string') changes[field] = (fields[field] as string).trim();
+	}
+	if (fields.tags !== undefined) {
+		changes.tags = parseNameList(fields.tags);
+		changes.tagMode = (fields.tagMode as TagMode | undefined) ?? 'add';
+	}
+	const target = readLocator(fields.collection);
+	if (target) {
+		const collectionId = await resolveCollectionId(this, target, i);
+		const collection = await linkwardenRequest<Collection>(
+			this,
+			'GET',
+			`/api/v1/collections/${collectionId}`,
+			requestOptions(this, i, { messages: { 404: `Collection ${collectionId} not found` } }),
+		);
+		changes.collection = { id: collection.id, ownerId: collection.ownerId };
+	}
+	if (Object.keys(changes).length === 0) {
+		throw new NodeOperationError(this.getNode(), 'Add at least one field to update', {
+			itemIndex: i,
+		});
+	}
+
+	const current = await fetchLink(this, linkId, i);
+	return toItems(await putLink(this, linkId, buildLinkUpdateBody(current, changes), i));
+};
+
 export const linkOperations: Record<string, OperationHandler> = {
 	create,
 	findByUrl,
 	get,
 	getAll,
 	search,
+	update,
 };

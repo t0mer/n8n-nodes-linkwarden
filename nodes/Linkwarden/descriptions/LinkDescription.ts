@@ -2,6 +2,9 @@ import type { INodeProperties } from 'n8n-workflow';
 
 import {
 	collectionLocator,
+	colorField,
+	iconField,
+	iconWeightField,
 	idField,
 	linkSortField,
 	returnAllAndLimit,
@@ -47,6 +50,12 @@ export const linkOperations: INodeProperties[] = [
 				value: 'search',
 				description: 'Search links by text, with optional filters',
 				action: 'Search links',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Change fields of a link. Fields you leave out keep their current values.',
+				action: 'Update a link',
 			},
 		],
 		default: 'getAll',
@@ -175,6 +184,84 @@ export const linkFields: INodeProperties[] = [
 						description: 'Fail the item',
 					},
 				],
+			},
+		],
+	},
+
+	// Update
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: { show: show('link', ['update']) },
+		options: [
+			collectionLocator({
+				name: 'collection',
+				displayName: 'Collection',
+				description:
+					'Move the link to this collection. Only the owner of a collection can move links out of it.',
+			}),
+			colorField,
+			{
+				displayName: 'Description',
+				name: 'description',
+				type: 'string',
+				default: '',
+				typeOptions: { rows: 3 },
+				description: 'A note about the link',
+			},
+			iconField,
+			iconWeightField,
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				default: '',
+				description: 'Title of the link',
+			},
+			{
+				displayName: 'Tag Mode',
+				name: 'tagMode',
+				type: 'options',
+				default: 'add',
+				description: 'How the Tags field changes the tags already on the link',
+				options: [
+					{
+						name: 'Add',
+						value: 'add',
+						description: 'Keep the current tags and add these',
+					},
+					{
+						name: 'Remove',
+						value: 'remove',
+						description: 'Remove these tags and keep the rest',
+					},
+					{
+						name: 'Replace',
+						value: 'replace',
+						description: 'Set exactly these tags (empty clears all tags)',
+					},
+				],
+			},
+			{
+				displayName: 'Tags',
+				name: 'tags',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. news, to-read',
+				description:
+					'Comma-separated tag names (or an array of names), applied according to Tag Mode',
+			},
+			{
+				displayName: 'URL',
+				name: 'url',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. https://example.com/article',
+				description:
+					'New address of the link. Changing it deletes the existing archives (screenshot, PDF, readable, HTML) and preserves the new page again.',
 			},
 		],
 	},
