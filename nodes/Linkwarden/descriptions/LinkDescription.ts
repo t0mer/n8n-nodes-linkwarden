@@ -22,6 +22,12 @@ export const linkOperations: INodeProperties[] = [
 		displayOptions: { show: { resource: ['link'] } },
 		options: [
 			{
+				name: 'Bulk Update',
+				value: 'bulkUpdate',
+				description: 'Move several links to a collection and/or add or replace their tags',
+				action: 'Bulk update links',
+			},
+			{
 				name: 'Create',
 				value: 'create',
 				description: 'Save a URL as a new link, with duplicate handling',
@@ -32,6 +38,13 @@ export const linkOperations: INodeProperties[] = [
 				value: 'delete',
 				description: 'Delete a link and its archives',
 				action: 'Delete a link',
+			},
+			{
+				name: 'Delete Archives',
+				value: 'deleteArchives',
+				description:
+					'Delete the preserved copies (screenshot, PDF, readable, HTML) of several links, keeping the links',
+				action: 'Delete archives of links',
 			},
 			{
 				name: 'Delete Many',
@@ -63,6 +76,12 @@ export const linkOperations: INodeProperties[] = [
 				value: 'pin',
 				description: 'Pin a link to your dashboard',
 				action: 'Pin a link',
+			},
+			{
+				name: 'Re-Archive',
+				value: 'reArchive',
+				description: 'Queue a link to be preserved again',
+				action: 'Re archive a link',
 			},
 			{
 				name: 'Search',
@@ -127,9 +146,38 @@ export const linkFields: INodeProperties[] = [
 		required: true,
 		placeholder: 'e.g. 12, 13, 20',
 		description: 'Comma-separated link IDs (or an array of IDs)',
-		displayOptions: { show: show('link', ['deleteMany']) },
+		displayOptions: { show: show('link', ['bulkUpdate', 'deleteArchives', 'deleteMany']) },
 	},
 	runOnceField(show('link', ['deleteMany']), 'delete all of them'),
+	runOnceField(show('link', ['deleteArchives']), 'delete all their archives'),
+	runOnceField(show('link', ['bulkUpdate']), 'update all of them'),
+
+	// Bulk Update
+	collectionLocator({
+		name: 'targetCollection',
+		displayName: 'Move to Collection',
+		description: 'Move all the links to this collection. Leave empty to keep them where they are.',
+		displayOptions: { show: show('link', ['bulkUpdate']) },
+	}),
+	{
+		displayName: 'Tags',
+		name: 'tags',
+		type: 'string',
+		default: '',
+		placeholder: 'e.g. news, to-read',
+		description:
+			"Comma-separated tag names (or an array of names) to add to every link. Tags that don't exist yet are created.",
+		displayOptions: { show: show('link', ['bulkUpdate']) },
+	},
+	{
+		displayName: 'Remove Previous Tags',
+		name: 'removePreviousTags',
+		type: 'boolean',
+		default: false,
+		description:
+			'Whether to replace the existing tags with the Tags above instead of adding to them. With no Tags set, this removes all tags.',
+		displayOptions: { show: show('link', ['bulkUpdate']) },
+	},
 
 	// Create
 	{

@@ -1,6 +1,6 @@
 import { NodeOperationError, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
 
-import { FIND_BY_URL_MAX_PAGES } from '../../../shared/constants';
+import { BULK_UPDATE_CAP, FIND_BY_URL_MAX_PAGES } from '../../../shared/constants';
 import {
 	buildLinkUpdateBody,
 	buildPinBody,
@@ -266,14 +266,78 @@ const deleteMany: OperationHandler = async function (i) {
 	return toItems({ deleted: result?.count ?? linkIds.length, linkIds });
 };
 
+const bulkUpdate: OperationHandler = async function (i) {
+	const linkIds = parseIdList(this, this.getNodeParameter('linkIds', i), 'Link IDs', i);
+	if (linkIds.length > BULK_UPDATE_CAP) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Bulk Update accepts at most ${BULK_UPDATE_CAP} links per execution, got ${linkIds.length}`,
+			{
+				itemIndex: i,
+				description: 'Split the IDs into smaller batches, e.g. with Loop Over Items.',
+			},
+		);
+	}
+	const target = getLocator(this, 'targetCollection', i);
+	const tags = parseNameList(this.getNodeParameter('tags', i, ''));
+	const removePreviousTags = this.getNodeParameter('removePreviousTags', i, false) as boolean;
+	if (!target && tags.length === 0 && !removePreviousTags) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Set Move to Collection, Tags, or Remove Previous Tags',
+			{ itemIndex: i },
+		);
+	}
+
+	const newData: IDataObject = {};
+	if (target) newData.collectionId = await resolveCollectionId(this, target, i);
+	if (tags.length > 0) newData.tags = tags.map((name) => ({ name }));
+
+	// The server re-reads every link and only uses `links[].id`.
+	const message = await linkwardenRequest<string>(
+		this,
+		'PUT',
+		'/api/v1/links',
+		requestOptions(this, i, {
+			body: { links: linkIds.map((id) => ({ id })), removePreviousTags, newData },
+		}),
+	);
+	return toItems({ updated: linkIds.length, linkIds, message });
+};
+
+const reArchive: OperationHandler = async function (i) {
+	const linkId = parseId(this, this.getNodeParameter('linkId', i), 'Link ID', i);
+	const message = await linkwardenRequest<string>(
+		this,
+		'PUT',
+		`/api/v1/links/${linkId}/archive`,
+		requestOptions(this, i, { messages: { 404: `Link ${linkId} not found` } }),
+	);
+	return toItems({ linkId, queued: true, message });
+};
+
+const deleteArchives: OperationHandler = async function (i) {
+	const linkIds = parseIdList(this, this.getNodeParameter('linkIds', i), 'Link IDs', i);
+	const message = await linkwardenRequest<string>(
+		this,
+		'DELETE',
+		'/api/v1/links/archive',
+		requestOptions(this, i, { body: { linkIds } }),
+	);
+	return toItems({ linkIds, message });
+};
+
 export const linkOperations: Record<string, OperationHandler> = {
+	bulkUpdate,
 	create,
 	delete: deleteLink,
+	deleteArchives,
 	deleteMany,
 	findByUrl,
 	get,
 	getAll,
 	pin: pinHandler(true),
+	reArchive,
 	search,
 	unpin: pinHandler(false),
 	update,
