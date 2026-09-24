@@ -2,6 +2,7 @@ import type { IDataObject, IPollFunctions } from 'n8n-workflow';
 
 import { MAX_ITEMS } from './constants';
 import { getAllCollections } from './locators';
+import { toPage } from './paginate';
 import { linkwardenRequest } from './transport';
 import type { Link } from './types';
 
@@ -53,44 +54,59 @@ async function collectionTree(ctx: IPollFunctions, rootId: number): Promise<Set<
 	return ids;
 }
 
+function filterQs(filters: TriggerFilters): IDataObject {
+	const qs: IDataObject = { sort: 0 };
+	if (filters.collectionId !== undefined && !filters.includeSubcollections) {
+		qs.collectionId = filters.collectionId;
+	}
+	if (filters.tagId !== undefined) qs.tagId = filters.tagId;
+	return qs;
+}
+
 /**
- * Walks `GET /api/v1/links` newest-first (cursor = last id) with the filters applied.
- * `visit` returns false to stop.
+ * Walks links newest-first through `GET /api/v1/search` without a query (the listing route
+ * `GET /api/v1/links` is deprecated). `visit` returns false to stop.
  */
 async function walkNewestFirst(
 	ctx: IPollFunctions,
-	filters: TriggerFilters,
+	qs: IDataObject,
+	tree: Set<number> | undefined,
 	visit: (link: Link, matches: boolean) => boolean,
 ): Promise<void> {
-	const qs: IDataObject = { sort: 0 };
-	let tree: Set<number> | undefined;
-	if (filters.collectionId !== undefined) {
-		if (filters.includeSubcollections) tree = await collectionTree(ctx, filters.collectionId);
-		else qs.collectionId = filters.collectionId;
-	}
-	if (filters.tagId !== undefined) qs.tagId = filters.tagId;
-
 	let scanned = 0;
-	let cursor: number | undefined;
+	let cursor: unknown;
 	while (scanned < MAX_ITEMS) {
-		const page = await linkwardenRequest<Link[]>(ctx, 'GET', '/api/v1/links', {
+		const data = await linkwardenRequest<unknown>(ctx, 'GET', '/api/v1/search', {
 			qs: cursor === undefined ? qs : { ...qs, cursor },
 		});
-		if (!Array.isArray(page) || page.length === 0) return;
-		for (const link of page) {
+		const page = toPage<Link>(data, 'links');
+		for (const link of page.items) {
 			scanned++;
 			const collectionId = link.collection?.id ?? link.collectionId;
 			const matches = !tree || (collectionId !== undefined && tree.has(collectionId));
 			if (!visit(link, matches)) return;
 		}
-		cursor = page[page.length - 1].id;
+		if (page.nextCursor === null || page.nextCursor === undefined || page.nextCursor === cursor) {
+			return;
+		}
+		cursor = page.nextCursor;
 	}
+}
+
+async function subcollectionTree(
+	ctx: IPollFunctions,
+	filters: TriggerFilters,
+): Promise<Set<number> | undefined> {
+	return filters.collectionId !== undefined && filters.includeSubcollections
+		? await collectionTree(ctx, filters.collectionId)
+		: undefined;
 }
 
 /** Manual "Fetch Test Event": the newest matching links, oldest first. Touches no state. */
 export async function sampleLinks(ctx: IPollFunctions, filters: TriggerFilters): Promise<Link[]> {
 	const links: Link[] = [];
-	await walkNewestFirst(ctx, filters, (link, matches) => {
+	const tree = await subcollectionTree(ctx, filters);
+	await walkNewestFirst(ctx, filterQs(filters), tree, (link, matches) => {
 		if (matches) links.push(link);
 		return links.length < MANUAL_SAMPLE_SIZE;
 	});
@@ -118,17 +134,23 @@ export async function pollNewLinks(
 
 	let newestId = lastSeenId;
 	const fresh: Link[] = [];
-	await walkNewestFirst(ctx, filters, (link, matches) => {
-		if (!seeded) {
+	if (!seeded) {
+		// Seed from the newest link overall, not the newest matching one: otherwise links
+		// that later move into the filtered collection or get the tag would fire as new.
+		await walkNewestFirst(ctx, { sort: 0 }, undefined, (link) => {
 			newestId = link.id;
 			return false;
-		}
-		if (link.id <= lastSeenId) return false;
-		newestId = Math.max(newestId, link.id);
-		if (matches) fresh.push(link);
-		// One extra match tells us whether we truncated.
-		return fresh.length <= maxPerPoll;
-	});
+		});
+	} else {
+		const tree = await subcollectionTree(ctx, filters);
+		await walkNewestFirst(ctx, filterQs(filters), tree, (link, matches) => {
+			if (link.id <= lastSeenId) return false;
+			newestId = Math.max(newestId, link.id);
+			if (matches) fresh.push(link);
+			// One extra match tells us whether we truncated.
+			return fresh.length <= maxPerPoll;
+		});
+	}
 
 	const state: TriggerState = {
 		version: 1,

@@ -5,7 +5,10 @@ import { calls, mockContext, type Responder } from './helpers';
 
 type LinkRow = { id: number; collectionId: number; name?: string };
 
-/** Serves GET /links newest-first with id cursors, page size 2, honoring collectionId/tagId. */
+/**
+ * Serves GET /search (no query) newest-first with id cursors, page size 2, honoring
+ * collectionId/tagId, like Linkwarden without Meilisearch.
+ */
 function server(links: LinkRow[], opts: { fail?: boolean; tagged?: number[] } = {}): Responder {
 	return ({ url, qs = {} }) => {
 		if (opts.fail) return { statusCode: 500, body: { response: 'boom' } };
@@ -24,7 +27,9 @@ function server(links: LinkRow[], opts: { fail?: boolean; tagged?: number[] } = 
 		if (qs.collectionId) rows = rows.filter((l) => l.collectionId === qs.collectionId);
 		if (qs.tagId) rows = rows.filter((l) => opts.tagged?.includes(l.id));
 		if (qs.cursor) rows = rows.filter((l) => l.id < (qs.cursor as number));
-		return { body: { response: rows.slice(0, 2) } };
+		const page = rows.slice(0, 2);
+		const nextCursor = page.length === 2 ? page[1].id : null;
+		return { body: { message: 'Success', data: { links: page, nextCursor } } };
 	};
 }
 
@@ -90,7 +95,23 @@ describe('Linkwarden Trigger', () => {
 		);
 		expect(await poll(ctx)).toBeNull();
 		expect(state.lastSeenId).toBe(4);
-		expect(calls(ctx)[0].qs).toMatchObject({ sort: 0, collectionId: 1 });
+		// Seeding looks at the newest link overall; later polls filter.
+		expect(calls(ctx)[0].qs).toEqual({ sort: 0 });
+		await poll(
+			triggerCtx(server(links), { collection: { __rl: true, mode: 'id', value: '1' } }, state),
+		);
+	});
+
+	it('seeds from the newest link overall, so old links moved into the filter do not fire', async () => {
+		const state: Record<string, unknown> = {};
+		const params = { collection: { __rl: true, mode: 'id', value: '3' } };
+		// Collection 3 is empty at activation; newest link overall is 20.
+		await poll(triggerCtx(server([{ id: 20, collectionId: 1 }]), params, state));
+		expect(state.lastSeenId).toBe(20);
+		// Link 20 is later moved into collection 3; it is not new.
+		const ctx = triggerCtx(server([{ id: 20, collectionId: 3 }]), params, state);
+		expect(await poll(ctx)).toBeNull();
+		expect(calls(ctx)[0].qs).toMatchObject({ sort: 0, collectionId: 3 });
 	});
 
 	it('emits the newest maxPerPoll links and flags truncation', async () => {
@@ -140,7 +161,7 @@ describe('Linkwarden Trigger', () => {
 		const ctx = triggerCtx(server(links), params, state);
 		expect(ids(await poll(ctx))).toEqual([2, 4]);
 		expect(state.lastSeenId).toBe(4);
-		const linkCalls = calls(ctx).filter((c) => c.url.endsWith('/api/v1/links'));
+		const linkCalls = calls(ctx).filter((c) => c.url.endsWith('/api/v1/search'));
 		expect(linkCalls[0].qs).not.toHaveProperty('collectionId');
 	});
 
