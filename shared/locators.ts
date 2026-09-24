@@ -91,6 +91,18 @@ export function collectionPaths(collections: Collection[]): Map<number, string> 
 	return paths;
 }
 
+/** Collections whose name, or full `Parent / Child` path, equals `name` ignoring case. */
+export function findCollectionsByName(
+	collections: Collection[],
+	name: string,
+	paths = collectionPaths(collections),
+): Collection[] {
+	const wanted = name.trim().toLowerCase();
+	return collections.filter(
+		(c) => c.name.toLowerCase() === wanted || paths.get(c.id)?.toLowerCase() === wanted,
+	);
+}
+
 export async function getAllCollections(
 	ctx: LinkwardenContext,
 	itemIndex?: number,
@@ -111,11 +123,8 @@ export async function resolveCollectionId(
 	if (locator.mode !== 'name') return parseId(ctx, locator.value, field, itemIndex);
 
 	const collections = await getAllCollections(ctx, itemIndex);
-	const wanted = locator.value.toLowerCase();
 	const paths = collectionPaths(collections);
-	const matches = collections.filter(
-		(c) => c.name.toLowerCase() === wanted || paths.get(c.id)?.toLowerCase() === wanted,
-	);
+	const matches = findCollectionsByName(collections, locator.value, paths);
 	if (matches.length === 0) {
 		throw new NodeOperationError(
 			ctx.getNode(),

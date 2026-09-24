@@ -1,6 +1,11 @@
 import { NodeOperationError, type IDataObject } from 'n8n-workflow';
 
-import { parseId } from '../../../shared/locators';
+import {
+	findCollectionsByName,
+	getAllCollections,
+	parseId,
+	resolveCollectionId,
+} from '../../../shared/locators';
 import { linkwardenRequest } from '../../../shared/transport';
 import type { RssSubscription } from '../../../shared/types';
 import { getLocator, requestOptions, toItems, type OperationHandler } from './utils';
@@ -23,9 +28,17 @@ const create: OperationHandler = async function (i) {
 	}
 
 	const body: IDataObject = { name, url };
-	// By Name is sent as collectionName so the server can create the collection.
-	if (collection.mode === 'name') body.collectionName = collection.value;
-	else body.collectionId = parseId(this, collection.value, 'Collection', i);
+	if (collection.mode !== 'name') {
+		body.collectionId = parseId(this, collection.value, 'Collection', i);
+	} else {
+		// The server matches collectionName case-sensitively and creates a new collection
+		// otherwise, so reuse an existing one (ignoring case) and only send the name when
+		// none exists.
+		const matches = findCollectionsByName(await getAllCollections(this, i), collection.value);
+		if (matches.length === 1) body.collectionId = matches[0].id;
+		else if (matches.length === 0) body.collectionName = collection.value;
+		else body.collectionId = await resolveCollectionId(this, collection, i);
+	}
 
 	return toItems(
 		await linkwardenRequest<RssSubscription>(

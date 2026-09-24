@@ -18,14 +18,34 @@ describe('RSS Subscription', () => {
 		});
 	});
 
-	it('sends collectionName for name mode', async () => {
-		const ctx = mockContext([{ body: { response: { id: 1 } } }], {
+	it('reuses an existing collection by name, ignoring case', async () => {
+		const ctx = mockContext(
+			[
+				{ body: { response: [{ id: 2, name: 'Work', ownerId: 1, parentId: null }] } },
+				{ body: { response: { id: 1 } } },
+			],
+			{
+				name: 'HN',
+				url: 'https://news.ycombinator.com/rss',
+				collection: { __rl: true, mode: 'name', value: 'work' },
+			},
+		);
+		await rssOperations.create.call(ctx, 0, {});
+		expect(calls(ctx)[1].body).toEqual({
+			name: 'HN',
+			url: 'https://news.ycombinator.com/rss',
+			collectionId: 2,
+		});
+	});
+
+	it('sends collectionName when no collection has that name', async () => {
+		const ctx = mockContext([{ body: { response: [] } }, { body: { response: { id: 1 } } }], {
 			name: 'HN',
 			url: 'https://news.ycombinator.com/rss',
 			collection: { __rl: true, mode: 'name', value: 'Feeds' },
 		});
 		await rssOperations.create.call(ctx, 0, {});
-		expect(calls(ctx)[0].body).toMatchObject({ collectionName: 'Feeds' });
+		expect(calls(ctx)[1].body).toMatchObject({ collectionName: 'Feeds' });
 	});
 
 	it('rejects names over 50 characters', async () => {
