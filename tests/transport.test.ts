@@ -175,9 +175,9 @@ describe('linkwardenRequest', () => {
 				}),
 			},
 		]);
-		const error = await linkwardenRequest(ctx, 'POST', '/x').catch((e) => e);
+		const error = await linkwardenRequest(ctx, 'POST', '/x').catch((e: Error) => e);
 		expect(JSON.stringify(error)).not.toContain('secret-token');
-		expect(String(error.message)).not.toContain('secret-token');
+		expect(String((error as Error).message)).not.toContain('secret-token');
 	});
 
 	it('returns a Buffer in binary mode and decodes JSON errors', async () => {
