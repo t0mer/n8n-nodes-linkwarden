@@ -9,23 +9,9 @@ import {
 } from 'n8n-workflow';
 
 import { searchCollections, searchTags } from '../../shared/loadOptions';
-import { linkOperations } from './actions/link';
-import type { ExecutionCache, OperationHandler } from './actions/utils';
-import {
-	linkFields,
-	linkOperations as linkOperationProperties,
-} from './descriptions/LinkDescription';
-
-const handlers: Record<string, Record<string, OperationHandler>> = {
-	link: linkOperations,
-};
-
-/** Operations that can read their input from the first item only and run a single request. */
-const RUN_ONCE_OPERATIONS = new Set<string>([
-	'link.bulkUpdate',
-	'link.deleteArchives',
-	'link.deleteMany',
-]);
+import { handlers, RUN_ONCE_OPERATIONS } from './actions';
+import type { ExecutionCache } from './actions/utils';
+import { resourceProperties, resourceProperty } from './descriptions';
 
 export class Linkwarden implements INodeType {
 	description: INodeTypeDescription = {
@@ -42,16 +28,8 @@ export class Linkwarden implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		credentials: [{ name: 'linkwardenApi', required: true }],
 		properties: [
-			{
-				displayName: 'Resource',
-				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
-				options: [{ name: 'Link', value: 'link' }],
-				default: 'link',
-			},
-			...linkOperationProperties,
-			...linkFields,
+			resourceProperty,
+			...resourceProperties,
 			{
 				displayName: 'Request Options',
 				name: 'requestOptions',

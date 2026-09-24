@@ -1,0 +1,47 @@
+[
+	{
+		"id": 1,
+		"name": "Unorganized",
+		"description": "",
+		"color": "#0ea5e9",
+		"parentId": null,
+		"isPublic": false,
+		"ownerId": 1,
+		"members": [],
+		"_count": { "links": 4 }
+	},
+	{
+		"id": 2,
+		"name": "Work",
+		"description": "Work stuff",
+		"color": "#ff0000",
+		"icon": "briefcase",
+		"iconWeight": "bold",
+		"parentId": null,
+		"isPublic": true,
+		"ownerId": 1,
+		"members": [
+			{
+				"userId": 5,
+				"collectionId": 2,
+				"canCreate": true,
+				"canUpdate": false,
+				"canDelete": false,
+				"user": { "username": "ana" }
+			}
+		],
+		"_count": { "links": 2 }
+	},
+	{
+		"id": 3,
+		"name": "Research",
+		"description": "",
+		"color": "#0ea5e9",
+		"parentId": 2,
+		"parent": { "id": 2, "name": "Work" },
+		"isPublic": false,
+		"ownerId": 1,
+		"members": [],
+		"_count": { "links": 0 }
+	}
+]
