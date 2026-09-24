@@ -123,6 +123,10 @@ Linkwarden only rejects duplicates when **Prevent duplicate links** is on in you
 settings. When it's off, turn on **Options → Check for Duplicates First**, which runs Find by URL
 before saving.
 
+> With Meilisearch, Linkwarden indexes a new link a few seconds after saving it. Until then,
+> Find by URL (and so **Check for Duplicates First**) can't see it. Creating the same URL twice
+> within seconds can therefore still produce a duplicate unless **Prevent duplicate links** is on.
+
 **Find by URL** never fails when nothing matches. It returns
 `{ found, matches, link }`, where `link` is the first match or `null`. URLs are compared after
 normalizing them:
@@ -174,6 +178,9 @@ supported yet.
 
 **Delete** removes the collection **and every link inside it**. This can't be undone.
 
+For **RSS Subscription → Create**, a collection chosen **By Name** reuses an existing collection
+with that name (ignoring case). Linkwarden creates the collection only when none exists.
+
 ## Search syntax
 
 **Link → Search** sends the query to Linkwarden's search.
@@ -192,7 +199,8 @@ Linkwarden has no outgoing webhooks, so **Linkwarden Trigger** polls. Every 5–
 usually enough.
 
 - **First activation**, or any change to the filters, records the newest link and emits nothing.
-  Later polls emit links saved since then, oldest first.
+  Later polls emit links saved since then, oldest first. Old links that are later moved into
+  the watched collection, or later get the watched tag, don't fire.
 - New links are detected by link ID. Imported links with old dates are still caught.
 - **Collection** and **Tag** narrow the links that fire the trigger.
   **Options → Include Subcollections** also matches links in nested collections.
@@ -209,9 +217,15 @@ node.
 - **Three response envelopes.** Most routes return `{ "response": … }`. `GET /api/v1/tags`
   returns `{ "data": { "tags", "nextCursor" } }`. `GET /api/v1/search` returns
   `{ "data": { "links", "nextCursor" } }`, or `data: []` when Meilisearch finds nothing.
-- **Pagination differs per route.** `GET /api/v1/links` has no `nextCursor`: the cursor is the
-  ID of the last link. Search and tags return an opaque `nextCursor`, which is an offset with
-  Meilisearch and a link ID without it.
+- **Listing links uses search.** `GET /api/v1/links` is deprecated (servers can turn it off
+  with `DISABLE_DEPRECATED_ROUTES`), so Get Many and the trigger call `GET /api/v1/search`
+  without a query. It takes the same filters and sort.
+- **Pagination.** Search and tags return an opaque `nextCursor`, which is an offset with
+  Meilisearch and a link ID without it. With Meilisearch, collection and tag filters are
+  applied after paging, so a page can be empty while `nextCursor` still points to more.
+- **Missing items.** An unknown link returns `401 "Collection is not accessible."` instead of
+  404, and an unknown collection returns `200` with `null`. The node turns both into clear
+  errors.
 - **Link update replaces the link.** `PUT /api/v1/links/{id}` needs the full object, including
   `collection: { id, ownerId }` and the complete `tags` list. A missing name or description is
   saved as empty.
