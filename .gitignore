@@ -21,7 +21,8 @@ docs/*
 *.design.md
 *.implementation.md
 
-# Local references and scan output
+# Local references, dev environment and scan output
+/dev/
 openapi.json
 scans/
 
