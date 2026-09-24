@@ -1,4 +1,5 @@
 import {
+	NodeApiError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type IDataObject,
@@ -6,6 +7,7 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	type JsonObject,
 } from 'n8n-workflow';
 
 import { searchCollections, searchTags } from '../../shared/loadOptions';
@@ -83,7 +85,11 @@ export class Linkwarden implements INodeType {
 				}
 			} catch (error) {
 				if (!this.continueOnFail()) {
-					// Our errors are already NodeApiError/NodeOperationError; wrapping returns the same instance.
+					// Both constructors return an existing instance of their own class unchanged, so this
+					// keeps NodeApiError (and its HTTP status) as-is and wraps anything else.
+					if (error instanceof NodeApiError) {
+						throw new NodeApiError(this.getNode(), error as unknown as JsonObject);
+					}
 					throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
 				}
 				const failure: IDataObject = {

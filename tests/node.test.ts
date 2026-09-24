@@ -101,6 +101,6 @@ describe('Linkwarden node execute', () => {
 				[{}],
 				() => ({ resource: 'link', operation: 'get', linkId: '5' }),
 			),
-		).rejects.toThrow('Link 5 not found');
+		).rejects.toMatchObject({ message: 'Link 5 not found', httpCode: '404' });
 	});
 });
