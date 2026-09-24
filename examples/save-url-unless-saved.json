@@ -1,0 +1,232 @@
+{
+  "name": "Save URL to Linkwarden unless already saved",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "36d10f10-eab4-591e-beb7-714708fd788b",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = $json.chatInput ?? '';\nconst match = text.match(/https?:\\/\\/\\S+/);\nif (!match) return [{ json: { url: null } }];\nreturn [{ json: { url: match[0].replace(/[).,]+$/, '') } }];"
+      },
+      "id": "0f95371c-62b2-58a3-9311-359f0bca91ed",
+      "name": "Extract URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "findByUrl",
+        "url": "={{ $json.url }}"
+      },
+      "id": "31687e7f-51d7-5fc3-9501-9b5179f7e9ce",
+      "name": "Find by URL",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwarden",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "found",
+              "leftValue": "={{ $json.found }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b241abee-01d3-5aeb-b46f-dd4f659b7560",
+      "name": "Already saved?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "o1",
+              "name": "output",
+              "value": "=Already saved as \"{{ $json.link.name }}\" (link {{ $json.link.id }}).",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "da430b2f-81e2-5018-83a0-1c627362988f",
+      "name": "Reply: already saved",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "url": "={{ $('Extract URL').item.json.url }}",
+        "additionalFields": {
+          "collection": {
+            "__rl": true,
+            "mode": "name",
+            "value": "Read Later"
+          },
+          "tags": "chat"
+        },
+        "options": {
+          "onDuplicate": "returnExisting"
+        }
+      },
+      "id": "7417bb18-8057-5fba-98a5-4305ac7dbfd3",
+      "name": "Create link",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwarden",
+      "typeVersion": 1,
+      "position": [
+        880,
+        100
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "o2",
+              "name": "output",
+              "value": "=Saved \"{{ $json.name }}\" to Linkwarden (link {{ $json.id }}).",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0e453372-de59-5181-8fa1-0175ccc329e3",
+      "name": "Reply: saved",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1100,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Extract URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract URL": {
+      "main": [
+        [
+          {
+            "node": "Find by URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find by URL": {
+      "main": [
+        [
+          {
+            "node": "Already saved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create link": {
+      "main": [
+        [
+          {
+            "node": "Reply: saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already saved?": {
+      "main": [
+        [
+          {
+            "node": "Reply: already saved",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

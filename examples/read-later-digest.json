@@ -1,0 +1,98 @@
+{
+  "name": "Read Later digest by email",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 15,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "event": "newLink",
+        "collection": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Read Later"
+        },
+        "options": {}
+      },
+      "id": "56846c7d-91c9-5d56-b360-717af5c2213f",
+      "name": "New link in Read Later",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwardenTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const lines = $input.all().map(({ json }) =>\n  `\u2022 ${json.name || json.url}\\n  ${json.url}${json.description ? `\\n  ${json.description}` : ''}${json.tags?.length ? `\\n  Tags: ${json.tags.join(', ')}` : ''}`,\n);\nreturn [{ json: { subject: `${lines.length} new link(s) in Read Later`, text: lines.join('\\n\\n') } }];"
+      },
+      "id": "bc285786-1b2f-512f-b7c1-76069f421f33",
+      "name": "Build digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "n8n@example.com",
+        "toEmail": "me@example.com",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {}
+      },
+      "id": "ab8d7721-c642-5c08-8e75-4bff9c185f0c",
+      "name": "Send digest",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        440,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "New link in Read Later": {
+      "main": [
+        [
+          {
+            "node": "Build digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build digest": {
+      "main": [
+        [
+          {
+            "node": "Send digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

@@ -1,0 +1,130 @@
+{
+  "name": "RSS feed to Linkwarden",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "id": "aa54a097-b5c0-5e38-a38d-f9145ab3e321",
+      "name": "Every hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://news.ycombinator.com/rss",
+        "options": {}
+      },
+      "id": "0cfdcb78-8b52-5813-90a7-fdfec9a2df5d",
+      "name": "Read RSS feed",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "url": "={{ $json.link }}",
+        "additionalFields": {
+          "name": "={{ $json.title }}",
+          "tags": "rss, news",
+          "collection": {
+            "__rl": true,
+            "mode": "name",
+            "value": "News"
+          }
+        },
+        "options": {
+          "onDuplicate": "skip",
+          "precheckDuplicate": true
+        }
+      },
+      "id": "50bac5ce-8ee8-59ed-b386-010073b5e94d",
+      "name": "Save link",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwarden",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "reArchive",
+        "linkId": "={{ $json.id }}"
+      },
+      "id": "7d3515a9-44b5-54e5-9689-7a80d4e06599",
+      "name": "Re-Archive",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwarden",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every hour": {
+      "main": [
+        [
+          {
+            "node": "Read RSS feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read RSS feed": {
+      "main": [
+        [
+          {
+            "node": "Save link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save link": {
+      "main": [
+        [
+          {
+            "node": "Re-Archive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

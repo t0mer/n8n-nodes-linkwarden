@@ -1,0 +1,141 @@
+{
+  "name": "Weekly: re-archive links without a PDF",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 3
+            }
+          ]
+        }
+      },
+      "id": "f7a0a7bf-b339-5ab1-91db-0abec057e095",
+      "name": "Every Monday",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": true
+      },
+      "id": "1e498afe-d360-5b53-9a43-6ac21c910893",
+      "name": "Get all links",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwarden",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "nopdf",
+              "leftValue": "={{ $json.archives.pdf }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "30a65ab8-39fa-53ad-9645-ef18427733b6",
+      "name": "Missing PDF",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "reArchive",
+        "linkId": "={{ $json.id }}"
+      },
+      "id": "7d3515a9-44b5-54e5-9689-7a80d4e06599",
+      "name": "Re-Archive",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwarden",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Monday": {
+      "main": [
+        [
+          {
+            "node": "Get all links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get all links": {
+      "main": [
+        [
+          {
+            "node": "Missing PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Missing PDF": {
+      "main": [
+        [
+          {
+            "node": "Re-Archive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

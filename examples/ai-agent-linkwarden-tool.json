@@ -1,0 +1,184 @@
+{
+  "name": "AI Agent with Linkwarden tools",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "36d10f10-eab4-591e-beb7-714708fd788b",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You manage the user's Linkwarden bookmarks. Before saving a URL, always check with the \"Find link by URL\" tool whether it is already saved; only save it if it is not. Save links to the collection the user names."
+        }
+      },
+      "id": "7f220001-3319-5715-a080-b028eddfff84",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "863b341b-d183-5584-9ab5-f4e415d6d9e0",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        140,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "findByUrl",
+        "url": "={{ $fromAI('url', 'The full URL to look for', 'string') }}"
+      },
+      "id": "bb0c2d04-9622-53af-af14-cbaa8945e0a6",
+      "name": "Find link by URL",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwardenTool",
+      "typeVersion": 1,
+      "position": [
+        320,
+        240
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "url": "={{ $fromAI('url', 'The full URL to save', 'string') }}",
+        "additionalFields": {
+          "collection": {
+            "__rl": true,
+            "mode": "name",
+            "value": "={{ $fromAI('collection', 'Name of the collection to save the link in', 'string') }}"
+          },
+          "tags": "={{ $fromAI('tags', 'Comma-separated tag names, may be empty', 'string') }}"
+        },
+        "options": {
+          "onDuplicate": "returnExisting"
+        }
+      },
+      "id": "da5d54e8-3db2-5631-aeb4-28ba04ebf81d",
+      "name": "Save link",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwardenTool",
+      "typeVersion": 1,
+      "position": [
+        460,
+        240
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "query": "={{ $fromAI('query', 'Text to search for in saved links', 'string') }}",
+        "limit": 10
+      },
+      "id": "c12f7fb8-6e54-5abd-b21b-0281aa492bac",
+      "name": "Search links",
+      "type": "@t0mer/n8n-nodes-linkwarden.linkwardenTool",
+      "typeVersion": 1,
+      "position": [
+        600,
+        240
+      ],
+      "credentials": {
+        "linkwardenApi": {
+          "id": "",
+          "name": "Linkwarden account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find link by URL": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save link": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search links": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
