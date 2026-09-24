@@ -136,7 +136,12 @@ const linkFilters = (operations: string[]): INodeProperties => ({
 });
 
 export const linkFields: INodeProperties[] = [
-	idField('linkId', 'Link ID', 'Numeric ID of the link, e.g. 42', show('link', ['get'])),
+	idField(
+		'linkId',
+		'Link ID',
+		'Numeric ID of the link, e.g. 42',
+		show('link', ['delete', 'get', 'pin', 'reArchive', 'unpin', 'update']),
+	),
 
 	// Delete Many
 	{
