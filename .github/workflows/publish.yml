@@ -21,8 +21,8 @@
 #   1. Log in to npmjs.com and open your package's settings.
 #   2. Under "Publish access" → "Trusted Publishers", click "Add a publisher".
 #   3. Select GitHub Actions and fill in:
-#        Repository owner: <your-github-username-or-org>
-#        Repository name:  <your-repo-name>
+#        Repository owner: t0mer
+#        Repository name:  n8n-nodes-linkwarden
 #        Workflow name:    publish.yml
 #        Environment:      (leave blank unless you use GitHub Environments)
 #   4. Leave the NPM_TOKEN secret unset in this repository. GitHub's OIDC
@@ -39,26 +39,25 @@
 #
 # ─── TAG CONVENTION ────────────────────────────────────────────────────────────
 #
-# This workflow triggers on tags matching "*.*.*" (e.g. 0.2.0).
-# If you prefer tags with a "v" prefix (e.g. v0.2.0), change the filter to:
-#   tags: ['v*.*.*']
+# Versions are date-based YYYY.M.PATCH (e.g. 2026.9.0) and the git tag is the
+# source of truth: the workflow writes the tag's version into package.json in
+# the runner. package.json on main is not bumped.
 #
 # ─── RELEASE PROCESS ───────────────────────────────────────────────────────────
 #
-# Run the following command locally to start an interactive release:
+# Tag the commit to ship (normally the tip of main) and push the tag:
 #
-#   npm run release
+#   VERSION="$(./scripts/next-version.sh)"
+#   git tag "$VERSION" && git push origin "$VERSION"
 #
-# This will lint, build, prompt for a version bump, update the changelog,
-# commit, tag, and push — which triggers this workflow to publish to npm.
+# A tag push runs the workflow file as it exists at the tagged commit.
 
 name: Publish
 
 on:
   push:
     tags:
-      # Matches 0.1.0, 1.2.3, 2.0.0-rc.1, etc.
-      # See "TAG CONVENTION" above if you prefer tags with a "v" prefix.
+      # Matches 2026.9.0, 2026.10.3, etc.
       - '*.*.*'
 
 jobs:
@@ -73,16 +72,31 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 'lts/*'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
         run: 'npm ci'
+
+      - name: Set version from tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag '$TAG' is not a semver version"
+            exit 1
+          fi
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Test
+        run: npm test
 
       - name: Release
         # Publishes to npm with a provenance attestation (requires id-token: write above).
@@ -97,3 +111,32 @@ jobs:
           npm run release
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  scan:
+    name: Scan published package
+    needs: publish
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Run the n8n community package scanner
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          # The registry can take a moment to serve a new version.
+          for attempt in 1 2 3 4 5; do
+            if npx --yes @n8n/scan-community-package@0.37.0 "@t0mer/n8n-nodes-linkwarden@$VERSION"; then
+              exit 0
+            fi
+            echo "Attempt $attempt failed, retrying in 30 s..."
+            sleep 30
+          done
+          exit 1
