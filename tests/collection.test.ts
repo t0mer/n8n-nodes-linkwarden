@@ -84,6 +84,7 @@ describe('Collection', () => {
 		const children = mockContext(routes, { returnAll: true, filters: { parent: rl('id', 2) } });
 		const out = await collectionOperations.getAll.call(children, 0, {});
 		expect(out.map((o) => o.json.id)).toEqual([3]);
+		expect(out[0].json.path).toBe('Work / Research');
 
 		const limited = mockContext(routes, { returnAll: false, limit: 2 });
 		const all = await collectionOperations.getAll.call(limited, 0, {});

@@ -83,6 +83,8 @@ const getAll: OperationHandler = async function (i) {
 	const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
 
 	let collections = await getAllCollections(this, i);
+	// Paths come from the full list so a filtered-out parent still appears in them.
+	const paths = collectionPaths(collections);
 	const parent = readLocator(filters.parent);
 	if (parent) {
 		const parentId = await resolveCollectionId(this, parent, i, 'Parent Collection');
@@ -90,7 +92,6 @@ const getAll: OperationHandler = async function (i) {
 	} else if (filters.topLevelOnly === true) {
 		collections = collections.filter((c) => (c.parentId ?? c.parent?.id ?? null) === null);
 	}
-	const paths = collectionPaths(collections);
 	const output = collections.map((c) => ({ ...c, path: paths.get(c.id) ?? c.name }));
 	return toItems(returnAll ? output : output.slice(0, limit));
 };
