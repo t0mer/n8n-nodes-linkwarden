@@ -1,0 +1,19 @@
+{
+	"node": "@t0mer/n8n-nodes-linkwarden.linkwarden",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Productivity"],
+	"alias": ["bookmark", "bookmarks", "read later", "web archive", "save link"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://github.com/t0mer/n8n-nodes-linkwarden?tab=readme-ov-file#credentials"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/t0mer/n8n-nodes-linkwarden?tab=readme-ov-file"
+			}
+		]
+	}
+}
