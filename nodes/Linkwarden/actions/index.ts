@@ -1,10 +1,12 @@
 import { collectionOperations } from './collection';
+import { highlightOperations } from './highlight';
 import { linkOperations } from './link';
 import { tagOperations } from './tag';
 import type { OperationHandler } from './utils';
 
 export const handlers: Record<string, Record<string, OperationHandler>> = {
 	collection: collectionOperations,
+	highlight: highlightOperations,
 	link: linkOperations,
 	tag: tagOperations,
 };
