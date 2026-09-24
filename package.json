@@ -48,7 +48,9 @@
     "credentials": [
       "dist/credentials/LinkwardenApi.credentials.js"
     ],
-    "nodes": []
+    "nodes": [
+      "dist/nodes/Linkwarden/Linkwarden.node.js"
+    ]
   },
   "devDependencies": {
     "@n8n/node-cli": "*",
