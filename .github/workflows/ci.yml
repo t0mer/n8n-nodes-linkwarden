@@ -48,7 +48,7 @@ jobs:
       - name: Scan with the n8n community package scanner
         run: |
           # Not a devDependency: its transitive deps trip npm audit.
-          npm install --no-save --ignore-scripts @n8n/scan-community-package
+          npm install --no-save --ignore-scripts @n8n/scan-community-package@0.37.0
           node scripts/scan-package.mjs "$GITHUB_WORKSPACE" "$RUNNER_TEMP/pack/package"
 
   security:
