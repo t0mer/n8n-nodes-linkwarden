@@ -18,6 +18,13 @@ export const linkOperations: INodeProperties[] = [
 		displayOptions: { show: { resource: ['link'] } },
 		options: [
 			{
+				name: 'Find by URL',
+				value: 'findByUrl',
+				description:
+					'Check whether a URL is already saved. Returns found, matches and link; never fails when nothing matches.',
+				action: 'Find links by URL',
+			},
+			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a link by ID',
@@ -70,6 +77,25 @@ const linkFilters = (operations: string[]): INodeProperties => ({
 
 export const linkFields: INodeProperties[] = [
 	idField('linkId', 'Link ID', 'Numeric ID of the link, e.g. 42', show('link', ['get'])),
+
+	// Find by URL
+	{
+		displayName: 'URL',
+		name: 'url',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: 'e.g. https://example.com/article',
+		description:
+			'The URL to look for. Matching ignores letter case in the scheme and host, a leading "www.", trailing slashes and the #fragment.',
+		displayOptions: { show: show('link', ['findByUrl']) },
+	},
+	collectionLocator({
+		name: 'scope',
+		displayName: 'Only in Collection',
+		description: 'Only look for the URL in this collection. Leave empty to search everywhere.',
+		displayOptions: { show: show('link', ['findByUrl']) },
+	}),
 
 	// Search
 	{
