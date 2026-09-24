@@ -3,6 +3,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import { collectionFields, collectionOperations } from './CollectionDescription';
 import { highlightFields, highlightOperations } from './HighlightDescription';
 import { linkFields, linkOperations } from './LinkDescription';
+import { rssFields, rssOperations } from './RssDescription';
 import { tagFields, tagOperations } from './TagDescription';
 
 export const resourceProperty: INodeProperties = {
@@ -14,6 +15,7 @@ export const resourceProperty: INodeProperties = {
 		{ name: 'Collection', value: 'collection' },
 		{ name: 'Highlight', value: 'highlight' },
 		{ name: 'Link', value: 'link' },
+		{ name: 'RSS Subscription', value: 'rssSubscription' },
 		{ name: 'Tag', value: 'tag' },
 	],
 	default: 'link',
@@ -26,6 +28,8 @@ export const resourceProperties: INodeProperties[] = [
 	...highlightFields,
 	...linkOperations,
 	...linkFields,
+	...rssOperations,
+	...rssFields,
 	...tagOperations,
 	...tagFields,
 ];
