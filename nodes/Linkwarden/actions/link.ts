@@ -49,13 +49,8 @@ const get: OperationHandler = async function (i) {
 	return toItems(linkOutput(this, i, await fetchLink(this, linkId, i)));
 };
 
-async function listLinks(
-	ctx: IExecuteFunctions,
-	i: number,
-	path: string,
-	qs: IDataObject,
-	kind: 'linksCursor' | 'nextCursor',
-) {
+/** Lists links through `GET /api/v1/search` with the operation's filters, sort and limit. */
+async function listLinks(ctx: IExecuteFunctions, i: number, qs: IDataObject) {
 	const returnAll = ctx.getNodeParameter('returnAll', i, false) as boolean;
 	const limit = ctx.getNodeParameter('limit', i, 50) as number;
 	const filters = ctx.getNodeParameter('filters', i, {}) as IDataObject;
@@ -64,8 +59,8 @@ async function listLinks(
 
 	const result = await paginate<Link>(
 		ctx,
-		kind,
-		path,
+		'nextCursor',
+		'/api/v1/search',
 		{ sort, ...qs, ...(await linkFilterQs(ctx, filters, i)) },
 		{ returnAll, limit, itemIndex, maxRetries, itemsKey: 'links' },
 	);
@@ -74,12 +69,14 @@ async function listLinks(
 }
 
 const getAll: OperationHandler = async function (i) {
-	return await listLinks(this, i, '/api/v1/links', {}, 'linksCursor');
+	// GET /api/v1/links is deprecated (and disabled with DISABLE_DEPRECATED_ROUTES); search
+	// without a query lists links with the same filters, sort and cursor.
+	return await listLinks(this, i, {});
 };
 
 const search: OperationHandler = async function (i) {
 	const query = (this.getNodeParameter('query', i) as string).trim();
-	return await listLinks(this, i, '/api/v1/search', { searchQueryString: query }, 'nextCursor');
+	return await listLinks(this, i, { searchQueryString: query });
 };
 
 /**

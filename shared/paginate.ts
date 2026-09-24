@@ -4,13 +4,13 @@ import { MAX_ITEMS } from './constants';
 import { linkwardenRequest, type LinkwardenContext } from './transport';
 
 /**
- * - `linksCursor`: `GET /api/v1/links`. No cursor in the response: the next cursor is the
- *   id of the last item, stop on an empty page.
- * - `nextCursor`: `GET /api/v1/search` and `GET /api/v1/tags`. Opaque `data.nextCursor`,
- *   stop when it's null/undefined.
+ * - `nextCursor`: `GET /api/v1/search` (also used for listing links, without a query) and
+ *   `GET /api/v1/tags`. Opaque `data.nextCursor`; stop when it's null/undefined or repeats.
+ *   A page can be empty while more follow: with Meilisearch the server pages over search
+ *   hits and applies collection/tag filters afterwards.
  * - `none`: the endpoint returns everything at once; limit client-side.
  */
-export type PaginationKind = 'linksCursor' | 'nextCursor' | 'none';
+export type PaginationKind = 'nextCursor' | 'none';
 
 export interface PaginateOptions {
 	returnAll?: boolean;
@@ -29,17 +29,14 @@ export interface PaginateResult<T> {
 	hitHardLimit: boolean;
 }
 
-interface Page<T> {
+export interface Page<T> {
 	items: T[];
 	nextCursor: unknown;
 }
 
-function toPage<T>(data: unknown, kind: PaginationKind, itemsKey: string): Page<T> {
-	if (Array.isArray(data)) {
-		const items = data as T[];
-		const last = items[items.length - 1] as IDataObject | undefined;
-		return { items, nextCursor: kind === 'linksCursor' ? last?.id : null };
-	}
+/** Normalizes `{ [itemsKey]: T[], nextCursor }`, a bare array, or Meilisearch's empty `[]`. */
+export function toPage<T>(data: unknown, itemsKey: string): Page<T> {
+	if (Array.isArray(data)) return { items: data as T[], nextCursor: null };
 	if (data !== null && typeof data === 'object') {
 		const obj = data as IDataObject;
 		const items = (Array.isArray(obj[itemsKey]) ? obj[itemsKey] : []) as T[];
@@ -61,7 +58,7 @@ export async function paginate<T = IDataObject>(
 
 	if (kind === 'none') {
 		const data = await linkwardenRequest<unknown>(ctx, 'GET', path, { qs, ...requestOptions });
-		const all = toPage<T>(data, kind, itemsKey).items;
+		const all = toPage<T>(data, itemsKey).items;
 		return {
 			items: all.slice(0, cap),
 			hitHardLimit: !!options.returnAll && all.length > MAX_ITEMS,
@@ -83,16 +80,10 @@ export async function paginate<T = IDataObject>(
 			...requestOptions,
 		});
 		pages++;
-		const page = toPage<T>(data, kind, itemsKey);
+		const page = toPage<T>(data, itemsKey);
 		items.push(...page.items);
 
-		const noProgress = page.nextCursor === cursor;
-		if (
-			page.items.length === 0 ||
-			page.nextCursor === null ||
-			page.nextCursor === undefined ||
-			noProgress
-		) {
+		if (page.nextCursor === null || page.nextCursor === undefined || page.nextCursor === cursor) {
 			exhausted = true;
 			break;
 		}

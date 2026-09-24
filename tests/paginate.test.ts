@@ -6,31 +6,35 @@ import { calls, mockContext } from './helpers';
 const links = (from: number, count: number) =>
 	Array.from({ length: count }, (_, i) => ({ id: from - i }));
 
-describe('paginate linksCursor', () => {
-	it('uses the last id as cursor and stops on an empty page', async () => {
-		const ctx = mockContext([
-			{ body: { response: links(100, 3) } },
-			{ body: { response: links(97, 2) } },
-			{ body: { response: [] } },
-		]);
+const searchPage = (items: object[], nextCursor: unknown) => ({
+	body: { message: '', data: { links: items, nextCursor } },
+});
+
+describe('paginate nextCursor (link listing through search)', () => {
+	it('passes the id cursor and stops on null', async () => {
+		const ctx = mockContext([searchPage(links(100, 3), 98), searchPage(links(97, 2), null)]);
 		const res = await paginate(
 			ctx,
-			'linksCursor',
-			'/api/v1/links',
+			'nextCursor',
+			'/api/v1/search',
 			{ sort: 0 },
 			{ returnAll: true },
 		);
 		expect(res.items.map((l) => l.id)).toEqual([100, 99, 98, 97, 96]);
 		expect(res.hitHardLimit).toBe(false);
 		const qs = calls(ctx).map((c) => c.qs);
-		expect(qs[0]).toEqual({ sort: 0 });
-		expect(qs[1]).toEqual({ sort: 0, cursor: 98 });
-		expect(qs[2]).toEqual({ sort: 0, cursor: 96 });
+		expect(qs).toEqual([{ sort: 0 }, { sort: 0, cursor: 98 }]);
+	});
+
+	it('keeps going past an empty page that still has a cursor (Meilisearch + filters)', async () => {
+		const ctx = mockContext([searchPage([], 50), searchPage([{ id: 7 }], null)]);
+		const res = await paginate(ctx, 'nextCursor', '/api/v1/search', {}, { returnAll: true });
+		expect(res.items).toEqual([{ id: 7 }]);
 	});
 
 	it('stops as soon as the limit is reached', async () => {
-		const ctx = mockContext([{ body: { response: links(100, 50) } }, { body: { response: [] } }]);
-		const res = await paginate(ctx, 'linksCursor', '/api/v1/links', {}, { limit: 10 });
+		const ctx = mockContext([searchPage(links(100, 50), 51), searchPage([], null)]);
+		const res = await paginate(ctx, 'nextCursor', '/api/v1/search', {}, { limit: 10 });
 		expect(res.items).toHaveLength(10);
 		expect(calls(ctx)).toHaveLength(1);
 	});
@@ -40,9 +44,9 @@ describe('paginate linksCursor', () => {
 		const ctx = mockContext(() => {
 			const page = links(next, 50);
 			next -= 50;
-			return { body: { response: page } };
+			return searchPage(page, next);
 		});
-		const res = await paginate(ctx, 'linksCursor', '/api/v1/links', {}, { returnAll: true });
+		const res = await paginate(ctx, 'nextCursor', '/api/v1/search', {}, { returnAll: true });
 		expect(res.items).toHaveLength(10_000);
 		expect(res.hitHardLimit).toBe(true);
 	});
