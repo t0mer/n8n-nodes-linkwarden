@@ -188,3 +188,12 @@ export const colorField: INodeProperties = {
 	default: '#0ea5e9',
 	description: 'Color as a hex code, e.g. #0ea5e9',
 };
+
+export const simplifyField = (displayOptions: DisplayFilter): INodeProperties => ({
+	displayName: 'Simplify',
+	name: 'simplify',
+	type: 'boolean',
+	default: true,
+	description: 'Whether to return a simplified version of the response instead of the raw data',
+	displayOptions: { show: displayOptions },
+});

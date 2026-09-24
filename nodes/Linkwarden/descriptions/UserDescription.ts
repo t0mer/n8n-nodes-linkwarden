@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { show } from './common';
+import { show, simplifyField } from './common';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -21,13 +21,4 @@ export const userOperations: INodeProperties[] = [
 	},
 ];
 
-export const userFields: INodeProperties[] = [
-	{
-		displayName: 'Simplify',
-		name: 'simplify',
-		type: 'boolean',
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-		displayOptions: { show: show('user', ['getMe']) },
-	},
-];
+export const userFields: INodeProperties[] = [simplifyField(show('user', ['getMe']))];

@@ -73,7 +73,7 @@ describe('Linkwarden node execute', () => {
 				return { body: { response: body } };
 			},
 			[{}, {}],
-			() => ({ resource: 'link', operation: 'pin', linkId: '42' }),
+			() => ({ resource: 'link', operation: 'pin', linkId: '42', simplify: false }),
 		);
 		expect(seen.filter((s) => s.endsWith('/users/me'))).toHaveLength(1);
 		expect(out[0].json.pinnedBy).toEqual([{ id: 9 }]);

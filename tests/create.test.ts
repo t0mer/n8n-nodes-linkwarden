@@ -31,6 +31,7 @@ describe('Link Create', () => {
 	it('creates a link with tags and collection by id', async () => {
 		const ctx = mockContext(routes(200), {
 			url: ` ${URL} `,
+			simplify: false,
 			additionalFields: {
 				name: 'New',
 				tags: 'news, to-read,',
@@ -59,7 +60,7 @@ describe('Link Create', () => {
 	});
 
 	it('409 + returnExisting (default) returns the saved link with duplicate: true', async () => {
-		const ctx = mockContext(routes(409), { url: URL });
+		const ctx = mockContext(routes(409), { url: URL, simplify: false });
 		const [out] = await run(ctx);
 		expect(out.json).toEqual({ ...existing, duplicate: true });
 	});

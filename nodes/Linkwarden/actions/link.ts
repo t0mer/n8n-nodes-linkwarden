@@ -22,6 +22,7 @@ import {
 	getLocator,
 	hintOnHardLimit,
 	linkFilterQs,
+	linkOutput,
 	requestOptions,
 	toItems,
 	type ExecutionCache,
@@ -43,7 +44,7 @@ export async function fetchLink(
 
 const get: OperationHandler = async function (i) {
 	const linkId = parseId(this, this.getNodeParameter('linkId', i), 'Link ID', i);
-	return toItems(await fetchLink(this, linkId, i));
+	return toItems(linkOutput(this, i, await fetchLink(this, linkId, i)));
 };
 
 async function listLinks(
@@ -67,7 +68,7 @@ async function listLinks(
 		{ returnAll, limit, itemIndex, maxRetries, itemsKey: 'links' },
 	);
 	hintOnHardLimit(ctx, result);
-	return toItems(result.items);
+	return toItems(result.items.map((link) => linkOutput(ctx, i, link)));
 }
 
 const getAll: OperationHandler = async function (i) {
@@ -112,7 +113,8 @@ const findByUrl: OperationHandler = async function (i) {
 	const scope = getLocator(this, 'scope', i);
 	const collectionId = scope ? await resolveCollectionId(this, scope, i) : undefined;
 	const matches = await findLinksByUrl(this, url, i, collectionId);
-	return toItems({ found: matches.length > 0, matches, link: matches[0] ?? null });
+	const output = matches.map((link) => linkOutput(this, i, link));
+	return toItems({ found: output.length > 0, matches: output, link: output[0] ?? null });
 };
 
 type OnDuplicate = 'error' | 'returnExisting' | 'skip';
@@ -132,7 +134,9 @@ function duplicateResult(
 		});
 	}
 	return toItems(
-		existing ? { ...existing, duplicate: true } : { url, duplicate: true, link: null },
+		existing
+			? { ...linkOutput(ctx, i, existing), duplicate: true }
+			: { url, duplicate: true, link: null },
 	);
 }
 
@@ -168,7 +172,7 @@ const create: OperationHandler = async function (i) {
 			onDuplicate === 'returnExisting' ? (await findLinksByUrl(this, url, i))[0] : undefined;
 		return duplicateResult(this, onDuplicate, url, existing, i);
 	}
-	return toItems({ ...response.data, duplicate: false });
+	return toItems({ ...linkOutput(this, i, response.data), duplicate: false });
 };
 
 export async function putLink(
@@ -217,7 +221,8 @@ const update: OperationHandler = async function (i) {
 	}
 
 	const current = await fetchLink(this, linkId, i);
-	return toItems(await putLink(this, linkId, buildLinkUpdateBody(current, changes), i));
+	const link = await putLink(this, linkId, buildLinkUpdateBody(current, changes), i);
+	return toItems(linkOutput(this, i, link));
 };
 
 /** The current user, fetched once per execution. */
@@ -240,7 +245,9 @@ function pinHandler(pin: boolean): OperationHandler {
 		const linkId = parseId(this, this.getNodeParameter('linkId', i), 'Link ID', i);
 		const me = await currentUser(this, cache, i);
 		const current = await fetchLink(this, linkId, i);
-		return toItems(await putLink(this, linkId, buildPinBody(current, me.id, pin), i));
+		const link = await putLink(this, linkId, buildPinBody(current, me.id, pin), i);
+		// The PUT response only includes pinnedBy for collection owners; report the state we set.
+		return toItems(linkOutput(this, i, { ...link, pinnedBy: pin ? [{ id: me.id }] : [] }));
 	};
 }
 

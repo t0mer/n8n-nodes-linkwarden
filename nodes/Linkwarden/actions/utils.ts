@@ -9,7 +9,8 @@ import {
 } from '../../../shared/locators';
 import type { PaginateResult } from '../../../shared/paginate';
 import type { LinkwardenRequestOptions } from '../../../shared/transport';
-import type { User } from '../../../shared/types';
+import { simplifyLink } from '../../../shared/simplify';
+import type { Link, User } from '../../../shared/types';
 
 /** Per-execution cache shared by all items (e.g. the current user for Pin/Unpin). */
 export interface ExecutionCache {
@@ -68,4 +69,9 @@ export function hintOnHardLimit(ctx: IExecuteFunctions, result: PaginateResult<u
 		message: 'Stopped after 10,000 items. Narrow the request with filters to get the rest.',
 		location: 'outputPane',
 	});
+}
+
+/** Applies the "Simplify" parameter (default on) to a link. */
+export function linkOutput(ctx: IExecuteFunctions, itemIndex: number, link: Link): IDataObject {
+	return (ctx.getNodeParameter('simplify', itemIndex, true) as boolean) ? simplifyLink(link) : link;
 }

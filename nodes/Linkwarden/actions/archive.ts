@@ -4,7 +4,7 @@ import { ARCHIVE_FORMATS } from '../../../shared/constants';
 import { parseId } from '../../../shared/locators';
 import { linkwardenRequest, linkwardenRequestFull } from '../../../shared/transport';
 import type { Link } from '../../../shared/types';
-import { requestOptions, toItems, type OperationHandler } from './utils';
+import { linkOutput, requestOptions, toItems, type OperationHandler } from './utils';
 
 const EXTENSIONS: Record<string, string> = {
 	'application/json': 'json',
@@ -120,7 +120,7 @@ const upload: OperationHandler = async function (i) {
 			hints: { 400: UPLOAD_LIMIT_HINT, 413: UPLOAD_LIMIT_HINT },
 		}),
 	);
-	return toItems(link);
+	return toItems(linkOutput(this, i, link));
 };
 
 const uploadNew: OperationHandler = async function (i) {
@@ -138,7 +138,7 @@ const uploadNew: OperationHandler = async function (i) {
 			hints: { 400: UPLOAD_LIMIT_HINT, 413: UPLOAD_LIMIT_HINT },
 		}),
 	);
-	return toItems(link);
+	return toItems(linkOutput(this, i, link));
 };
 
 export const archiveOperations: Record<string, OperationHandler> = { download, upload, uploadNew };

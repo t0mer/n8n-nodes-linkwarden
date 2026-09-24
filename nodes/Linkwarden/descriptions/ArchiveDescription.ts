@@ -1,6 +1,6 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-import { idField, show } from './common';
+import { idField, show, simplifyField } from './common';
 
 export const archiveOperations: INodeProperties[] = [
 	{
@@ -132,4 +132,5 @@ export const archiveFields: INodeProperties[] = [
 			},
 		],
 	},
+	simplifyField(show('archive', ['upload', 'uploadNew'])),
 ];

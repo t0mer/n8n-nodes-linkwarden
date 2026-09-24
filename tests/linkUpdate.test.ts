@@ -74,6 +74,7 @@ describe('Link Update operation', () => {
 		const seen: string[] = [];
 		const ctx = mockContext(routes(seen), {
 			linkId: '42',
+			simplify: false,
 			updateFields: { tags: 'dev, ml', tagMode: 'replace', description: 'New note' },
 		});
 		const [out] = await linkOperations.update.call(ctx, 0, {});
@@ -86,7 +87,11 @@ describe('Link Update operation', () => {
 	});
 
 	it('defaults to add mode', async () => {
-		const ctx = mockContext(routes([]), { linkId: 42, updateFields: { tags: 'ml' } });
+		const ctx = mockContext(routes([]), {
+			linkId: 42,
+			simplify: false,
+			updateFields: { tags: 'ml' },
+		});
 		const [out] = await linkOperations.update.call(ctx, 0, {});
 		expect(out.json.tags).toHaveLength(3);
 	});
@@ -95,6 +100,7 @@ describe('Link Update operation', () => {
 		const seen: string[] = [];
 		const ctx = mockContext(routes(seen), {
 			linkId: 42,
+			simplify: false,
 			updateFields: { collection: { __rl: true, mode: 'id', value: '5' } },
 		});
 		const [out] = await linkOperations.update.call(ctx, 0, {});

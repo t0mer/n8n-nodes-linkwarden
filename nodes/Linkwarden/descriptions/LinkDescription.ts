@@ -8,6 +8,7 @@ import {
 	idField,
 	linkSortField,
 	runOnceField,
+	simplifyField,
 	returnAllAndLimit,
 	show,
 	tagLocator,
@@ -388,4 +389,7 @@ export const linkFields: INodeProperties[] = [
 	...returnAllAndLimit(show('link', ['getAll', 'search'])),
 	linkSortField(show('link', ['getAll', 'search'])),
 	linkFilters(['getAll', 'search']),
+	simplifyField(
+		show('link', ['create', 'findByUrl', 'get', 'getAll', 'pin', 'search', 'unpin', 'update']),
+	),
 ];
