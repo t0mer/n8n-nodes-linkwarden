@@ -6,6 +6,7 @@ import { highlightFields, highlightOperations } from './HighlightDescription';
 import { linkFields, linkOperations } from './LinkDescription';
 import { rssFields, rssOperations } from './RssDescription';
 import { tagFields, tagOperations } from './TagDescription';
+import { userFields, userOperations } from './UserDescription';
 
 export const resourceProperty: INodeProperties = {
 	displayName: 'Resource',
@@ -19,6 +20,7 @@ export const resourceProperty: INodeProperties = {
 		{ name: 'Link', value: 'link' },
 		{ name: 'RSS Subscription', value: 'rssSubscription' },
 		{ name: 'Tag', value: 'tag' },
+		{ name: 'User', value: 'user' },
 	],
 	default: 'link',
 };
@@ -36,4 +38,6 @@ export const resourceProperties: INodeProperties[] = [
 	...rssFields,
 	...tagOperations,
 	...tagFields,
+	...userOperations,
+	...userFields,
 ];
