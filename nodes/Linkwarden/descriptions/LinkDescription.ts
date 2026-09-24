@@ -7,6 +7,7 @@ import {
 	iconWeightField,
 	idField,
 	linkSortField,
+	runOnceField,
 	returnAllAndLimit,
 	show,
 	tagLocator,
@@ -25,6 +26,18 @@ export const linkOperations: INodeProperties[] = [
 				value: 'create',
 				description: 'Save a URL as a new link, with duplicate handling',
 				action: 'Create a link',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a link and its archives',
+				action: 'Delete a link',
+			},
+			{
+				name: 'Delete Many',
+				value: 'deleteMany',
+				description: 'Delete several links by ID in one request',
+				action: 'Delete many links',
 			},
 			{
 				name: 'Find by URL',
@@ -46,10 +59,22 @@ export const linkOperations: INodeProperties[] = [
 				action: 'Get many links',
 			},
 			{
+				name: 'Pin',
+				value: 'pin',
+				description: 'Pin a link to your dashboard',
+				action: 'Pin a link',
+			},
+			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search links by text, with optional filters',
 				action: 'Search links',
+			},
+			{
+				name: 'Unpin',
+				value: 'unpin',
+				description: 'Remove a link from your pinned links',
+				action: 'Unpin a link',
 			},
 			{
 				name: 'Update',
@@ -92,6 +117,19 @@ const linkFilters = (operations: string[]): INodeProperties => ({
 
 export const linkFields: INodeProperties[] = [
 	idField('linkId', 'Link ID', 'Numeric ID of the link, e.g. 42', show('link', ['get'])),
+
+	// Delete Many
+	{
+		displayName: 'Link IDs',
+		name: 'linkIds',
+		type: 'string',
+		default: '',
+		required: true,
+		placeholder: 'e.g. 12, 13, 20',
+		description: 'Comma-separated link IDs (or an array of IDs)',
+		displayOptions: { show: show('link', ['deleteMany']) },
+	},
+	runOnceField(show('link', ['deleteMany']), 'delete all of them'),
 
 	// Create
 	{

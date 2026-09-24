@@ -1,18 +1,30 @@
 import { NodeOperationError, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
 
-import { paginate } from '../../../shared/paginate';
-import { parseId, parseNameList, readLocator, resolveCollectionId } from '../../../shared/locators';
 import { FIND_BY_URL_MAX_PAGES } from '../../../shared/constants';
-import { sameUrl, urlSearchTerm } from '../../../shared/url';
-import { buildLinkUpdateBody, type LinkChanges, type TagMode } from '../../../shared/linkUpdate';
-import { linkwardenRequest, linkwardenRequestFull } from '../../../shared/transport';
-import type { Collection, Link } from '../../../shared/types';
 import {
+	buildLinkUpdateBody,
+	buildPinBody,
+	type LinkChanges,
+	type TagMode,
+} from '../../../shared/linkUpdate';
+import {
+	parseId,
+	parseIdList,
+	parseNameList,
+	readLocator,
+	resolveCollectionId,
+} from '../../../shared/locators';
+import { paginate } from '../../../shared/paginate';
+import { linkwardenRequest, linkwardenRequestFull } from '../../../shared/transport';
+import type { Collection, Link, User } from '../../../shared/types';
+import { sameUrl, urlSearchTerm } from '../../../shared/url';
+import {
+	getLocator,
 	hintOnHardLimit,
 	linkFilterQs,
-	getLocator,
 	requestOptions,
 	toItems,
+	type ExecutionCache,
 	type OperationHandler,
 } from './utils';
 
@@ -208,11 +220,61 @@ const update: OperationHandler = async function (i) {
 	return toItems(await putLink(this, linkId, buildLinkUpdateBody(current, changes), i));
 };
 
+/** The current user, fetched once per execution. */
+export async function currentUser(
+	ctx: IExecuteFunctions,
+	cache: ExecutionCache,
+	itemIndex: number,
+): Promise<User> {
+	cache.me ??= await linkwardenRequest<User>(
+		ctx,
+		'GET',
+		'/api/v1/users/me',
+		requestOptions(ctx, itemIndex),
+	);
+	return cache.me;
+}
+
+function pinHandler(pin: boolean): OperationHandler {
+	return async function (i, cache) {
+		const linkId = parseId(this, this.getNodeParameter('linkId', i), 'Link ID', i);
+		const me = await currentUser(this, cache, i);
+		const current = await fetchLink(this, linkId, i);
+		return toItems(await putLink(this, linkId, buildPinBody(current, me.id, pin), i));
+	};
+}
+
+const deleteLink: OperationHandler = async function (i) {
+	const linkId = parseId(this, this.getNodeParameter('linkId', i), 'Link ID', i);
+	await linkwardenRequest(
+		this,
+		'DELETE',
+		`/api/v1/links/${linkId}`,
+		requestOptions(this, i, { messages: { 404: `Link ${linkId} not found` } }),
+	);
+	return toItems({ id: linkId, deleted: true });
+};
+
+const deleteMany: OperationHandler = async function (i) {
+	const linkIds = parseIdList(this, this.getNodeParameter('linkIds', i), 'Link IDs', i);
+	const result = await linkwardenRequest<{ count?: number }>(
+		this,
+		'DELETE',
+		'/api/v1/links',
+		requestOptions(this, i, { body: { linkIds } }),
+	);
+	return toItems({ deleted: result?.count ?? linkIds.length, linkIds });
+};
+
 export const linkOperations: Record<string, OperationHandler> = {
 	create,
+	delete: deleteLink,
+	deleteMany,
 	findByUrl,
 	get,
 	getAll,
+	pin: pinHandler(true),
 	search,
+	unpin: pinHandler(false),
 	update,
 };

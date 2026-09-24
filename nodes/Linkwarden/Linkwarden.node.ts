@@ -21,7 +21,7 @@ const handlers: Record<string, Record<string, OperationHandler>> = {
 };
 
 /** Operations that can read their input from the first item only and run a single request. */
-const RUN_ONCE_OPERATIONS = new Set<string>([]);
+const RUN_ONCE_OPERATIONS = new Set<string>(['link.deleteMany']);
 
 export class Linkwarden implements INodeType {
 	description: INodeTypeDescription = {
