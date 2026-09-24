@@ -4,7 +4,7 @@ import { ARCHIVE_FORMATS } from '../../../shared/constants';
 import { parseId } from '../../../shared/locators';
 import { linkwardenRequest, linkwardenRequestFull } from '../../../shared/transport';
 import type { Link } from '../../../shared/types';
-import { linkOutput, requestOptions, toItems, type OperationHandler } from './utils';
+import { linkErrors, linkOutput, requestOptions, toItems, type OperationHandler } from './utils';
 
 const EXTENSIONS: Record<string, string> = {
 	'application/json': 'json',
@@ -116,7 +116,7 @@ const upload: OperationHandler = async function (i) {
 		requestOptions(this, i, {
 			qs,
 			body,
-			messages: { 404: `Link ${linkId} not found` },
+			...linkErrors(linkId),
 			hints: { 400: UPLOAD_LIMIT_HINT, 413: UPLOAD_LIMIT_HINT },
 		}),
 	);

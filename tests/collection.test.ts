@@ -101,3 +101,12 @@ describe('Collection', () => {
 		expect(out.json).toEqual({ id: 3, deleted: true });
 	});
 });
+
+describe('Collection not found', () => {
+	it('turns the 200 null response into a clear error', async () => {
+		const ctx = mockContext([{ body: { response: null } }], { collection: rl('id', '999') });
+		await expect(collectionOperations.get.call(ctx, 0, {})).rejects.toThrow(
+			'Collection 999 not found',
+		);
+	});
+});

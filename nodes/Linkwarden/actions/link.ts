@@ -16,11 +16,13 @@ import {
 } from '../../../shared/locators';
 import { paginate } from '../../../shared/paginate';
 import { linkwardenRequest, linkwardenRequestFull } from '../../../shared/transport';
-import type { Collection, Link, User } from '../../../shared/types';
+import type { Link, User } from '../../../shared/types';
 import { sameUrl, urlSearchTerm } from '../../../shared/url';
 import {
+	fetchCollection,
 	getLocator,
 	hintOnHardLimit,
+	linkErrors,
 	linkFilterQs,
 	linkOutput,
 	requestOptions,
@@ -38,7 +40,7 @@ export async function fetchLink(
 		ctx,
 		'GET',
 		`/api/v1/links/${linkId}`,
-		requestOptions(ctx, itemIndex, { messages: { 404: `Link ${linkId} not found` } }),
+		requestOptions(ctx, itemIndex, linkErrors(linkId)),
 	);
 }
 
@@ -185,7 +187,7 @@ export async function putLink(
 		ctx,
 		'PUT',
 		`/api/v1/links/${linkId}`,
-		requestOptions(ctx, itemIndex, { body, messages: { 404: `Link ${linkId} not found` } }),
+		requestOptions(ctx, itemIndex, { body, ...linkErrors(linkId) }),
 	);
 }
 
@@ -206,12 +208,7 @@ const update: OperationHandler = async function (i) {
 	const target = readLocator(fields.collection);
 	if (target) {
 		const collectionId = await resolveCollectionId(this, target, i);
-		const collection = await linkwardenRequest<Collection>(
-			this,
-			'GET',
-			`/api/v1/collections/${collectionId}`,
-			requestOptions(this, i, { messages: { 404: `Collection ${collectionId} not found` } }),
-		);
+		const collection = await fetchCollection(this, collectionId, i);
 		changes.collection = { id: collection.id, ownerId: collection.ownerId };
 	}
 	if (Object.keys(changes).length === 0) {
@@ -257,7 +254,7 @@ const deleteLink: OperationHandler = async function (i) {
 		this,
 		'DELETE',
 		`/api/v1/links/${linkId}`,
-		requestOptions(this, i, { messages: { 404: `Link ${linkId} not found` } }),
+		requestOptions(this, i, linkErrors(linkId)),
 	);
 	return toItems({ id: linkId, deleted: true });
 };
@@ -318,7 +315,7 @@ const reArchive: OperationHandler = async function (i) {
 		this,
 		'PUT',
 		`/api/v1/links/${linkId}/archive`,
-		requestOptions(this, i, { messages: { 404: `Link ${linkId} not found` } }),
+		requestOptions(this, i, linkErrors(linkId)),
 	);
 	return toItems({ linkId, queued: true, message });
 };

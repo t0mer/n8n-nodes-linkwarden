@@ -3,7 +3,7 @@ import { NodeOperationError, type IDataObject } from 'n8n-workflow';
 import { parseId } from '../../../shared/locators';
 import { linkwardenRequest } from '../../../shared/transport';
 import type { Highlight } from '../../../shared/types';
-import { requestOptions, toItems, type OperationHandler } from './utils';
+import { linkErrors, requestOptions, toItems, type OperationHandler } from './utils';
 
 const upsert: OperationHandler = async function (i) {
 	const linkId = parseId(this, this.getNodeParameter('linkId', i), 'Link ID', i);
@@ -43,7 +43,7 @@ const getAll: OperationHandler = async function (i) {
 			this,
 			'GET',
 			`/api/v1/links/${linkId}/highlights`,
-			requestOptions(this, i, { messages: { 404: `Link ${linkId} not found` } }),
+			requestOptions(this, i, linkErrors(linkId)),
 		),
 	);
 };

@@ -8,7 +8,13 @@ import {
 } from '../../../shared/locators';
 import { linkwardenRequest } from '../../../shared/transport';
 import type { Collection } from '../../../shared/types';
-import { getLocator, requestOptions, toItems, type OperationHandler } from './utils';
+import {
+	fetchCollection,
+	getLocator,
+	requestOptions,
+	toItems,
+	type OperationHandler,
+} from './utils';
 
 const STYLE_FIELDS = ['description', 'color', 'icon', 'iconWeight'] as const;
 
@@ -18,15 +24,6 @@ async function collectionIdParam(ctx: IExecuteFunctions, i: number): Promise<num
 		throw new NodeOperationError(ctx.getNode(), 'Select a collection', { itemIndex: i });
 	}
 	return await resolveCollectionId(ctx, locator, i);
-}
-
-async function fetchCollection(ctx: IExecuteFunctions, id: number, i: number): Promise<Collection> {
-	return await linkwardenRequest<Collection>(
-		ctx,
-		'GET',
-		`/api/v1/collections/${id}`,
-		requestOptions(ctx, i, { messages: { 404: `Collection ${id} not found` } }),
-	);
 }
 
 /**

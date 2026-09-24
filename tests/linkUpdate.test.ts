@@ -116,3 +116,27 @@ describe('Link Update operation', () => {
 		expect(calls(ctx)).toHaveLength(0);
 	});
 });
+
+describe('Link not found', () => {
+	it('explains Linkwarden 401 for a missing link', async () => {
+		const ctx = mockContext(
+			[{ statusCode: 401, body: { response: 'Collection is not accessible.' } }],
+			{
+				linkId: 999999,
+				updateFields: { name: 'x' },
+			},
+		);
+		await expect(linkOperations.update.call(ctx, 0, {})).rejects.toMatchObject({
+			message: 'Collection is not accessible.',
+			description: 'Link 999999 may not exist, or you may not have access to it.',
+		});
+	});
+
+	it('errors clearly when the target collection does not exist', async () => {
+		const ctx = mockContext([{ body: { response: null } }], {
+			linkId: 42,
+			updateFields: { collection: { __rl: true, mode: 'id', value: '77' } },
+		});
+		await expect(linkOperations.update.call(ctx, 0, {})).rejects.toThrow('Collection 77 not found');
+	});
+});

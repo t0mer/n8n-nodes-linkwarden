@@ -1,4 +1,9 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type IDataObject,
+	type IExecuteFunctions,
+	type INodeExecutionData,
+} from 'n8n-workflow';
 
 import { DEFAULT_MAX_RETRIES } from '../../../shared/constants';
 import {
@@ -8,9 +13,9 @@ import {
 	type LocatorValue,
 } from '../../../shared/locators';
 import type { PaginateResult } from '../../../shared/paginate';
-import type { LinkwardenRequestOptions } from '../../../shared/transport';
+import { linkwardenRequest, type LinkwardenRequestOptions } from '../../../shared/transport';
 import { simplifyLink } from '../../../shared/simplify';
-import type { Link, User } from '../../../shared/types';
+import type { Collection, Link, User } from '../../../shared/types';
 
 /** Per-execution cache shared by all items (e.g. the current user for Pin/Unpin). */
 export interface ExecutionCache {
@@ -74,4 +79,33 @@ export function hintOnHardLimit(ctx: IExecuteFunctions, result: PaginateResult<u
 /** Applies the "Simplify" parameter (default on) to a link. */
 export function linkOutput(ctx: IExecuteFunctions, itemIndex: number, link: Link): IDataObject {
 	return (ctx.getNodeParameter('simplify', itemIndex, true) as boolean) ? simplifyLink(link) : link;
+}
+
+/**
+ * Error options for requests on one link. Linkwarden answers a missing link with
+ * 401 "Collection is not accessible." rather than 404, so explain that.
+ */
+export function linkErrors(linkId: number): LinkwardenRequestOptions {
+	return {
+		messages: { 404: `Link ${linkId} not found` },
+		hints: { 401: `Link ${linkId} may not exist, or you may not have access to it.` },
+	};
+}
+
+/** `GET /api/v1/collections/{id}`. Linkwarden returns 200 with `null` for an unknown id. */
+export async function fetchCollection(
+	ctx: IExecuteFunctions,
+	id: number,
+	itemIndex: number,
+): Promise<Collection> {
+	const collection = await linkwardenRequest<Collection | null>(
+		ctx,
+		'GET',
+		`/api/v1/collections/${id}`,
+		requestOptions(ctx, itemIndex, { messages: { 404: `Collection ${id} not found` } }),
+	);
+	if (!collection) {
+		throw new NodeOperationError(ctx.getNode(), `Collection ${id} not found`, { itemIndex });
+	}
+	return collection;
 }
