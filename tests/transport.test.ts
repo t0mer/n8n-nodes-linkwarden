@@ -92,6 +92,16 @@ describe('linkwardenRequest', () => {
 		).rejects.toMatchObject({ message: 'Link 123 not found', httpCode: '404' });
 	});
 
+	it('adds a per-status hint as the description', async () => {
+		const ctx = mockContext([{ statusCode: 413, body: 'Payload Too Large' }]);
+		await expect(
+			linkwardenRequest(ctx, 'POST', '/x', { hints: { 413: 'Check the upload limit' } }),
+		).rejects.toMatchObject({
+			message: 'Payload Too Large',
+			description: 'Check the upload limit',
+		});
+	});
+
 	it('maps 403 and 404 without retrying', async () => {
 		for (const statusCode of [403, 404]) {
 			const ctx = mockContext([{ statusCode, body: { response: 'Nope' } }]);

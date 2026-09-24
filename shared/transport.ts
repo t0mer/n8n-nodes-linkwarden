@@ -33,6 +33,8 @@ export interface LinkwardenRequestOptions {
 	allowStatuses?: number[];
 	/** Per-status error message override; the server text becomes the description. */
 	messages?: Partial<Record<number, string>>;
+	/** Per-status hint shown as the description; the server text stays the message. */
+	hints?: Partial<Record<number, string>>;
 	itemIndex?: number;
 	maxRetries?: number;
 }
@@ -139,6 +141,9 @@ function statusError(
 				message = text || `Linkwarden returned HTTP ${statusCode}`;
 		}
 	}
+
+	const hint = options.hints?.[statusCode];
+	if (hint) description = description ? `${description}. ${hint}` : hint;
 
 	const errorResponse: JsonObject =
 		body !== null && typeof body === 'object' && !Array.isArray(body)

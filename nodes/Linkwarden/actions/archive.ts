@@ -1,9 +1,10 @@
-import type { IDataObject } from 'n8n-workflow';
+import { NodeOperationError, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
 
 import { ARCHIVE_FORMATS } from '../../../shared/constants';
 import { parseId } from '../../../shared/locators';
-import { linkwardenRequestFull } from '../../../shared/transport';
-import { requestOptions, type OperationHandler } from './utils';
+import { linkwardenRequest, linkwardenRequestFull } from '../../../shared/transport';
+import type { Link } from '../../../shared/types';
+import { requestOptions, toItems, type OperationHandler } from './utils';
 
 const EXTENSIONS: Record<string, string> = {
 	'application/json': 'json',
@@ -67,4 +68,77 @@ const download: OperationHandler = async function (i) {
 	return [{ json, binary: { [binaryPropertyName]: binary } }];
 };
 
-export const archiveOperations: Record<string, OperationHandler> = { download };
+const UPLOAD_LIMIT_HINT =
+	'The server rejects files over its upload limit (NEXT_PUBLIC_MAX_FILE_BUFFER, 10 MB by default).';
+
+const PREVIEW_MIME_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
+
+/** Reads the input file, checks its MIME type against the format, and builds the multipart body. */
+async function uploadForm(
+	ctx: IExecuteFunctions,
+	i: number,
+	format: number,
+	preview: boolean,
+): Promise<FormData> {
+	const binaryPropertyName = ctx.getNodeParameter('binaryPropertyName', i, 'data') as string;
+	const file = ctx.helpers.assertBinaryData(i, binaryPropertyName);
+	const info = ARCHIVE_FORMATS[format];
+	const mimeType = (file.mimeType ?? '').split(';')[0].trim().toLowerCase();
+	const allowed = preview ? PREVIEW_MIME_TYPES : (info?.uploadMimeTypes ?? []);
+	if (!allowed.includes(mimeType)) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`The file in "${binaryPropertyName}" is ${mimeType || 'of unknown type'}, but ${preview ? 'a preview' : `the ${info?.label ?? format} format`} needs ${allowed.join(' or ') || 'a different format'}`,
+			{ itemIndex: i },
+		);
+	}
+	const buffer = await ctx.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+	const form = new FormData();
+	form.append(
+		'file',
+		new Blob([new Uint8Array(buffer)], { type: mimeType }),
+		file.fileName ?? `upload.${info?.extension ?? 'bin'}`,
+	);
+	return form;
+}
+
+const upload: OperationHandler = async function (i) {
+	const linkId = parseId(this, this.getNodeParameter('linkId', i), 'Link ID', i);
+	const format = this.getNodeParameter('format', i) as number;
+	const preview = this.getNodeParameter('preview', i, false) as boolean;
+	const body = await uploadForm(this, i, format, preview);
+	const qs: IDataObject = { format };
+	if (preview) qs.preview = 'true';
+	const link = await linkwardenRequest<Link>(
+		this,
+		'POST',
+		`/api/v1/archives/${linkId}`,
+		requestOptions(this, i, {
+			qs,
+			body,
+			messages: { 404: `Link ${linkId} not found` },
+			hints: { 400: UPLOAD_LIMIT_HINT, 413: UPLOAD_LIMIT_HINT },
+		}),
+	);
+	return toItems(link);
+};
+
+const uploadNew: OperationHandler = async function (i) {
+	const format = this.getNodeParameter('format', i) as number;
+	const url = (this.getNodeParameter('url', i, '') as string).trim();
+	const body = await uploadForm(this, i, format, false);
+	if (url) body.append('url', url);
+	const link = await linkwardenRequest<Link>(
+		this,
+		'POST',
+		'/api/v1/archives',
+		requestOptions(this, i, {
+			qs: { format },
+			body,
+			hints: { 400: UPLOAD_LIMIT_HINT, 413: UPLOAD_LIMIT_HINT },
+		}),
+	);
+	return toItems(link);
+};
+
+export const archiveOperations: Record<string, OperationHandler> = { download, upload, uploadNew };

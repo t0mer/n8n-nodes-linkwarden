@@ -91,3 +91,72 @@ describe('Archive Download', () => {
 		);
 	});
 });
+
+function uploadCtx(mimeType: string, params: Record<string, unknown>) {
+	const ctx = mockContext([{ body: { response: { id: 9, pdf: 'archives/1/9.pdf' } } }], {
+		binaryPropertyName: 'data',
+		...params,
+	});
+	ctx.helpers.assertBinaryData = vi.fn(() => ({ mimeType, fileName: 'doc.bin', data: '' }));
+	ctx.helpers.getBinaryDataBuffer = vi.fn(async () => Buffer.from('%PDF-1.4'));
+	return ctx;
+}
+
+describe('Archive Upload', () => {
+	it('uploads to a link as multipart with a typed file part', async () => {
+		const ctx = uploadCtx('application/pdf', { linkId: '9', format: 2 });
+		const [out] = await archiveOperations.upload.call(ctx, 0, {});
+		const req = calls(ctx)[0];
+		expect(req).toMatchObject({
+			method: 'POST',
+			url: 'https://links.example.com/api/v1/archives/9',
+			qs: { format: 2 },
+		});
+		expect(req.json).toBeUndefined();
+		expect(req.body).toBeInstanceOf(FormData);
+		const file = (req.body as FormData).get('file') as File;
+		expect(file.type).toBe('application/pdf');
+		expect(file.name).toBe('doc.bin');
+		expect(Buffer.from(await file.arrayBuffer()).toString()).toBe('%PDF-1.4');
+		expect(out.json).toMatchObject({ id: 9 });
+	});
+
+	it('rejects a MIME type that does not match the format', async () => {
+		const ctx = uploadCtx('image/png', { linkId: 9, format: 2 });
+		await expect(archiveOperations.upload.call(ctx, 0, {})).rejects.toThrow(
+			'is image/png, but the PDF format needs application/pdf',
+		);
+		expect(calls(ctx)).toHaveLength(0);
+	});
+
+	it('accepts image/jpg for JPEG and only images for previews', async () => {
+		const jpeg = uploadCtx('image/jpg', { linkId: 9, format: 1 });
+		await archiveOperations.upload.call(jpeg, 0, {});
+		expect((calls(jpeg)[0].body as FormData).get('file')).toBeTruthy();
+
+		const preview = uploadCtx('application/pdf', { linkId: 9, format: 2, preview: true });
+		await expect(archiveOperations.upload.call(preview, 0, {})).rejects.toThrow('a preview needs');
+	});
+
+	it('uploads as a new link with the optional source URL', async () => {
+		const ctx = uploadCtx('text/html', { format: 4, url: ' https://example.com/page ' });
+		await archiveOperations.uploadNew.call(ctx, 0, {});
+		const req = calls(ctx)[0];
+		expect(req.url).toBe('https://links.example.com/api/v1/archives');
+		expect(req.qs).toEqual({ format: 4 });
+		expect((req.body as FormData).get('url')).toBe('https://example.com/page');
+	});
+
+	it('mentions the upload limit on 413', async () => {
+		const ctx = mockContext([{ statusCode: 413, body: 'Request Entity Too Large' }], {
+			linkId: 9,
+			format: 2,
+			binaryPropertyName: 'data',
+		});
+		ctx.helpers.assertBinaryData = vi.fn(() => ({ mimeType: 'application/pdf', data: '' }));
+		ctx.helpers.getBinaryDataBuffer = vi.fn(async () => Buffer.from('x'));
+		await expect(archiveOperations.upload.call(ctx, 0, {})).rejects.toMatchObject({
+			description: expect.stringContaining('NEXT_PUBLIC_MAX_FILE_BUFFER'),
+		});
+	});
+});
