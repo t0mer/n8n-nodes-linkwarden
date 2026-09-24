@@ -30,7 +30,7 @@
     "url": "https://github.com/t0mer/n8n-nodes-linkwarden.git"
   },
   "scripts": {
-    "build": "n8n-node build",
+    "build": "node scripts/sync-version.mjs && n8n-node build",
     "build:watch": "tsc --watch",
     "dev": "n8n-node dev",
     "lint": "n8n-node lint",
