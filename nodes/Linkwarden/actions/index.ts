@@ -1,3 +1,4 @@
+import { archiveOperations } from './archive';
 import { collectionOperations } from './collection';
 import { highlightOperations } from './highlight';
 import { linkOperations } from './link';
@@ -6,6 +7,7 @@ import { tagOperations } from './tag';
 import type { OperationHandler } from './utils';
 
 export const handlers: Record<string, Record<string, OperationHandler>> = {
+	archive: archiveOperations,
 	collection: collectionOperations,
 	highlight: highlightOperations,
 	link: linkOperations,
