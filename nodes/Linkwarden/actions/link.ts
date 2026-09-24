@@ -1,10 +1,10 @@
-import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
+import { NodeOperationError, type IDataObject, type IExecuteFunctions } from 'n8n-workflow';
 
 import { paginate } from '../../../shared/paginate';
-import { parseId, resolveCollectionId } from '../../../shared/locators';
+import { parseId, parseNameList, readLocator, resolveCollectionId } from '../../../shared/locators';
 import { FIND_BY_URL_MAX_PAGES } from '../../../shared/constants';
 import { sameUrl, urlSearchTerm } from '../../../shared/url';
-import { linkwardenRequest } from '../../../shared/transport';
+import { linkwardenRequest, linkwardenRequestFull } from '../../../shared/transport';
 import type { Link } from '../../../shared/types';
 import {
 	hintOnHardLimit,
@@ -102,4 +102,66 @@ const findByUrl: OperationHandler = async function (i) {
 	return toItems({ found: matches.length > 0, matches, link: matches[0] ?? null });
 };
 
-export const linkOperations: Record<string, OperationHandler> = { findByUrl, get, getAll, search };
+type OnDuplicate = 'error' | 'returnExisting' | 'skip';
+
+function duplicateResult(
+	ctx: IExecuteFunctions,
+	onDuplicate: OnDuplicate,
+	url: string,
+	existing: Link | undefined,
+	i: number,
+) {
+	if (onDuplicate === 'skip') return [];
+	if (onDuplicate === 'error') {
+		throw new NodeOperationError(ctx.getNode(), `Link already exists: ${url}`, {
+			itemIndex: i,
+			description: existing ? `Existing link ID: ${existing.id}` : undefined,
+		});
+	}
+	return toItems(
+		existing ? { ...existing, duplicate: true } : { url, duplicate: true, link: null },
+	);
+}
+
+const create: OperationHandler = async function (i) {
+	const url = (this.getNodeParameter('url', i) as string).trim();
+	const fields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
+	const options = this.getNodeParameter('options', i, {}) as IDataObject;
+	const onDuplicate = (options.onDuplicate as OnDuplicate | undefined) ?? 'returnExisting';
+
+	const body: IDataObject = { url, type: 'url' };
+	if (typeof fields.name === 'string' && fields.name.trim()) body.name = fields.name.trim();
+	if (typeof fields.description === 'string' && fields.description) {
+		body.description = fields.description;
+	}
+	const tags = parseNameList(fields.tags);
+	if (tags.length > 0) body.tags = tags.map((name) => ({ name }));
+	const collection = readLocator(fields.collection);
+	if (collection) body.collection = { id: await resolveCollectionId(this, collection, i) };
+
+	if (options.precheckDuplicate === true) {
+		const [existing] = await findLinksByUrl(this, url, i);
+		if (existing) return duplicateResult(this, onDuplicate, url, existing, i);
+	}
+
+	const response = await linkwardenRequestFull<Link>(
+		this,
+		'POST',
+		'/api/v1/links',
+		requestOptions(this, i, { body, allowStatuses: [409] }),
+	);
+	if (response.statusCode === 409) {
+		const existing =
+			onDuplicate === 'returnExisting' ? (await findLinksByUrl(this, url, i))[0] : undefined;
+		return duplicateResult(this, onDuplicate, url, existing, i);
+	}
+	return toItems({ ...response.data, duplicate: false });
+};
+
+export const linkOperations: Record<string, OperationHandler> = {
+	create,
+	findByUrl,
+	get,
+	getAll,
+	search,
+};
