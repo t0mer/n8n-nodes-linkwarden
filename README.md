@@ -17,6 +17,10 @@ URL** and the **On Duplicate** option of **Link → Create**.
 Tested against **Linkwarden v2.16.3** (self-hosted, with and without Meilisearch). It works with
 self-hosted instances and with Linkwarden Cloud.
 
+![Linkwarden node demo: save a URL unless it's already saved](assets/demo/linkwarden-demo.gif)
+
+[Watch the full demo video (MP4)](assets/demo/linkwarden-demo.mp4)
+
 > This package is unofficial. It is not affiliated with, endorsed by, or supported by the
 > Linkwarden project. "Linkwarden" is used only to describe what the nodes connect to.
 
