@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026.10.0
+
+- `package.json` on `main` now carries the same version as the release tag, so the published
+  package can be verified against the source. No functional changes.
+
 ## 2026.9.0
 
 First release.

@@ -1,6 +1,6 @@
 {
   "name": "@t0mer/n8n-nodes-linkwarden",
-  "version": "2026.9.0",
+  "version": "2026.10.0",
   "description": "n8n community nodes for Linkwarden: save, search and manage links, collections, tags, highlights, archives and RSS subscriptions, and trigger on new links.",
   "license": "MIT",
   "homepage": "https://github.com/t0mer/n8n-nodes-linkwarden#readme",
